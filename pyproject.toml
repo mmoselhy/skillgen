@@ -1,0 +1,74 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "skillgen"
+version = "0.1.0"
+description = "Analyze any codebase and auto-generate AI agent skill files for Claude Code, Cursor, and other AI tools"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    { name = "skillgen contributors", email = "skillgen@example.com" },
+]
+keywords = ["skillgen", "ai-agents", "claude-code", "cursor", "llm-tools", "developer-tools", "code-analysis"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Code Generators",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/skillgen/skillgen"
+Repository = "https://github.com/skillgen/skillgen"
+Issues = "https://github.com/skillgen/skillgen/issues"
+Documentation = "https://github.com/skillgen/skillgen#readme"
+
+[project.optional-dependencies]
+llm = [
+    "anthropic>=0.20.0",
+    "openai>=1.10.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.8.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+skillgen = "skillgen.cli:app"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
+ignore = ["E501", "B008"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_any_generics = false
+
+[[tool.mypy.overrides]]
+module = ["anthropic", "openai"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
