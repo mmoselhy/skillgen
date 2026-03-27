@@ -23,12 +23,40 @@ MAX_SAMPLE_FILES = 50
 MAX_PER_DIR = 5
 
 
-def analyze_project(project_info: ProjectInfo, verbose: bool = False) -> AnalysisResult:
-    """Analyze the project and extract code patterns."""
+def analyze_project(
+    project_info: ProjectInfo,
+    verbose: bool = False,
+    use_tree_sitter: bool = True,
+) -> AnalysisResult:
+    """Analyze the project and extract code patterns.
+
+    When use_tree_sitter is True and tree-sitter is installed, uses AST-based
+    extraction for more accurate pattern detection. Falls back to regex
+    per-language when a specific grammar is unavailable.
+    """
+    from skillgen.ts_parser import TREE_SITTER_AVAILABLE, is_language_available
+
     start = time.monotonic()
     all_patterns: list[CodePattern] = []
     files_analyzed = 0
     files_skipped = 0
+
+    # Determine which languages can use tree-sitter
+    ts_enabled = use_tree_sitter and TREE_SITTER_AVAILABLE
+    ts_langs: set[Language] = set()
+    if ts_enabled:
+        from skillgen.ts_extractors import ts_extract_all
+        from skillgen.ts_parser import parse_source
+
+        for lang_info in project_info.languages:
+            if is_language_available(lang_info.language):
+                ts_langs.add(lang_info.language)
+
+    # Regex extractors (same signature for all 7 categories)
+    regex_extractors = [
+        _extract_naming, _extract_error_handling, _extract_testing,
+        _extract_imports, _extract_documentation, _extract_style, _extract_logging,
+    ]
 
     for lang_info in project_info.languages:
         sample = _select_sample(lang_info.file_paths, MAX_SAMPLE_FILES, MAX_PER_DIR)
@@ -46,14 +74,17 @@ def analyze_project(project_info: ProjectInfo, verbose: bool = False) -> Analysi
             files_analyzed += 1
             lang = lang_info.language
 
-            # Run all extractors
-            all_patterns.extend(_extract_naming(source, lang, file_path))
-            all_patterns.extend(_extract_error_handling(source, lang, file_path))
-            all_patterns.extend(_extract_testing(source, lang, file_path))
-            all_patterns.extend(_extract_imports(source, lang, file_path))
-            all_patterns.extend(_extract_documentation(source, lang, file_path))
-            all_patterns.extend(_extract_style(source, lang, file_path))
-            all_patterns.extend(_extract_logging(source, lang, file_path))
+            if lang in ts_langs:
+                root = parse_source(source, lang, file_path)
+                if root is not None:
+                    all_patterns.extend(ts_extract_all(root, source, lang, file_path))
+                else:
+                    # Parse failed — fall back to regex
+                    for extractor in regex_extractors:
+                        all_patterns.extend(extractor(source, lang, file_path))
+            else:
+                for extractor in regex_extractors:
+                    all_patterns.extend(extractor(source, lang, file_path))
 
     # Architecture patterns from directory structure
     all_patterns.extend(_extract_architecture(project_info))
