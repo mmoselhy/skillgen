@@ -1,4 +1,4 @@
-"""Tests for the generator module."""
+"""Tests for the generator module (evidence-only renderers with ProjectConventions)."""
 
 from __future__ import annotations
 
@@ -11,44 +11,61 @@ from skillgen.generator import (
     generate_skills,
 )
 from skillgen.models import (
-    AnalysisResult,
-    CodePattern,
+    CategorySummary,
     Confidence,
+    ConventionEntry,
     Language,
     LanguageInfo,
     PatternCategory,
+    ProjectConventions,
     ProjectInfo,
 )
+from skillgen.synthesizer import synthesize
 
 
-def _create_file(base: Path, relative: str, content: str = "") -> Path:
-    full = base / relative
-    full.parent.mkdir(parents=True, exist_ok=True)
-    full.write_text(content, encoding="utf-8")
-    return full
+def _make_entry(
+    name: str,
+    description: str,
+    *,
+    prevalence: float = 0.8,
+    file_count: int = 24,
+    total_files: int = 30,
+    confidence: Confidence = Confidence.HIGH,
+    evidence: list[str] | None = None,
+    language: Language = Language.PYTHON,
+) -> ConventionEntry:
+    """Helper to create a ConventionEntry."""
+    return ConventionEntry(
+        name=name,
+        description=description,
+        prevalence=prevalence,
+        file_count=file_count,
+        total_files=total_files,
+        confidence=confidence,
+        evidence=evidence or [f"example_{name}_1", f"example_{name}_2"],
+        language=language,
+    )
 
 
-def _make_patterns(
-    category: PatternCategory, count: int, lang: Language = Language.PYTHON
-) -> list[CodePattern]:
-    """Create a list of test patterns for a given category."""
-    return [
-        CodePattern(
-            category=category,
-            name=f"test_pattern_{i}",
-            description=f"Test pattern {i} for {category.display_name}",
-            evidence=[f"evidence_{i}_a", f"evidence_{i}_b"],
-            confidence=Confidence.HIGH,
-            language=lang,
-            file_path=Path(f"test_file_{i}.py"),
+def _make_conventions(
+    entries_by_category: dict[PatternCategory, list[ConventionEntry]],
+    *,
+    config_settings: dict[str, str] | None = None,
+    config_files_parsed: list[str] | None = None,
+    files_analyzed: int = 30,
+) -> ProjectConventions:
+    """Create a test ProjectConventions object."""
+    categories: dict[PatternCategory, CategorySummary] = {}
+    for cat, entries in entries_by_category.items():
+        categories[cat] = CategorySummary(
+            category=cat,
+            entries=entries,
+            files_analyzed=files_analyzed,
+            raw_pattern_count=len(entries) * 3,
+            config_values={},
         )
-        for i in range(count)
-    ]
 
-
-def _make_analysis(patterns: list[CodePattern]) -> AnalysisResult:
-    """Create a test AnalysisResult with given patterns."""
-    return AnalysisResult(
+    return ProjectConventions(
         project_info=ProjectInfo(
             root_path=Path("/test/project"),
             languages=[
@@ -63,106 +80,145 @@ def _make_analysis(patterns: list[CodePattern]) -> AnalysisResult:
             total_files=100,
             source_files=50,
         ),
-        patterns=patterns,
-        files_analyzed=30,
+        categories=categories,
+        config_settings=config_settings or {},
+        config_files_parsed=config_files_parsed or [],
+        files_analyzed=files_analyzed,
+        analysis_duration_seconds=0.5,
+        synthesis_duration_seconds=0.1,
     )
 
 
+def _create_file(base: Path, relative: str, content: str = "") -> Path:
+    full = base / relative
+    full.parent.mkdir(parents=True, exist_ok=True)
+    full.write_text(content, encoding="utf-8")
+    return full
+
+
 class TestLocalGenerator:
-    """Test the local template engine."""
+    """Test the local template engine with ProjectConventions input."""
 
-    def test_generates_skills_with_sufficient_patterns(self) -> None:
-        patterns: list[CodePattern] = []
-        # Add enough patterns for naming and error handling
-        patterns.extend(_make_patterns(PatternCategory.NAMING, 5))
-        patterns.extend(_make_patterns(PatternCategory.ERROR_HANDLING, 4))
+    def test_generates_skills_with_entries(self) -> None:
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case"),
+                _make_entry("class_naming", "Classes use PascalCase"),
+            ],
+            PatternCategory.ERROR_HANDLING: [
+                _make_entry("exception_types", "Uses try/except with ValueError, KeyError"),
+            ],
+        })
 
-        analysis = _make_analysis(patterns)
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
         assert len(result.skills) >= 2
         skill_names = [s.name for s in result.skills]
         assert "naming-conventions" in skill_names
         assert "error-handling" in skill_names
 
-    def test_skips_categories_with_few_patterns(self) -> None:
-        patterns: list[CodePattern] = []
-        patterns.extend(_make_patterns(PatternCategory.NAMING, 5))
-        patterns.extend(_make_patterns(PatternCategory.LOGGING, 2))  # Below threshold
+    def test_skips_categories_with_no_entries(self) -> None:
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case"),
+            ],
+        })
 
-        analysis = _make_analysis(patterns)
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
         skill_names = [s.name for s in result.skills]
         assert "naming-conventions" in skill_names
         assert "logging-and-observability" not in skill_names
 
     def test_generated_content_is_nonempty(self) -> None:
-        patterns = _make_patterns(PatternCategory.NAMING, 5)
-        analysis = _make_analysis(patterns)
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case"),
+            ],
+        })
+
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
         for skill in result.skills:
             assert len(skill.content) > 0
             assert skill.category.display_name in skill.content
 
     def test_generated_content_has_markdown_structure(self) -> None:
-        patterns = _make_patterns(PatternCategory.NAMING, 5)
-        analysis = _make_analysis(patterns)
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case"),
+            ],
+        })
+
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
         for skill in result.skills:
             lines = skill.content.split("\n")
-            # Should have at least one heading
             headings = [ln for ln in lines if ln.startswith("#")]
             assert len(headings) >= 1
 
     def test_stats_are_populated(self) -> None:
-        patterns = _make_patterns(PatternCategory.NAMING, 5)
-        analysis = _make_analysis(patterns)
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case"),
+            ],
+        })
+
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
         assert "categories_attempted" in result.stats
         assert "skills_generated" in result.stats
         assert result.stats["skills_generated"] == len(result.skills)
 
     def test_timing_is_recorded(self) -> None:
-        patterns = _make_patterns(PatternCategory.NAMING, 5)
-        analysis = _make_analysis(patterns)
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case"),
+            ],
+        })
+
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
         assert result.timing_seconds >= 0.0
 
     def test_glob_patterns_set_for_language(self) -> None:
-        patterns = _make_patterns(PatternCategory.NAMING, 5, Language.PYTHON)
-        analysis = _make_analysis(patterns)
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case", language=Language.PYTHON),
+            ],
+        })
+
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
         for skill in result.skills:
             if skill.name == "naming-conventions":
                 assert any("*.py" in g for g in skill.glob_patterns)
 
     def test_always_apply_for_architecture(self) -> None:
-        patterns = _make_patterns(PatternCategory.ARCHITECTURE, 5)
-        analysis = _make_analysis(patterns)
+        conventions = _make_conventions({
+            PatternCategory.ARCHITECTURE: [
+                _make_entry("top_level_dirs", "Standard project layout"),
+            ],
+        })
+
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
         for skill in result.skills:
             if skill.name == "architecture":
                 assert skill.always_apply is True
 
-    def test_no_skills_from_empty_analysis(self) -> None:
-        analysis = _make_analysis([])
+    def test_no_skills_from_empty_conventions(self) -> None:
+        conventions = _make_conventions({})
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
         assert len(result.skills) == 0
 
 
@@ -170,104 +226,147 @@ class TestGenerateSkills:
     """Test the generate_skills factory function."""
 
     def test_local_mode(self) -> None:
-        patterns = _make_patterns(PatternCategory.NAMING, 5)
-        analysis = _make_analysis(patterns)
-        result = generate_skills(analysis, mode=GenerationMode.LOCAL)
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case"),
+            ],
+        })
+        result = generate_skills(conventions, mode=GenerationMode.LOCAL)
         assert len(result.skills) >= 1
 
     def test_default_mode_is_local(self) -> None:
-        patterns = _make_patterns(PatternCategory.NAMING, 5)
-        analysis = _make_analysis(patterns)
-        result = generate_skills(analysis)
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case"),
+            ],
+        })
+        result = generate_skills(conventions)
         assert len(result.skills) >= 1
 
 
 class TestSkillContentQuality:
-    """Test that generated skill content is specific and useful."""
+    """Test that generated skill content contains actual stats and evidence."""
 
-    def test_naming_skill_references_patterns(self) -> None:
-        patterns = [
-            CodePattern(
-                category=PatternCategory.NAMING,
-                name="function_naming",
-                description="Functions use snake_case",
-                evidence=["get_user_by_id", "validate_email"],
-                confidence=Confidence.HIGH,
-                language=Language.PYTHON,
-                file_path=Path("utils.py"),
-            ),
-            CodePattern(
-                category=PatternCategory.NAMING,
-                name="class_naming",
-                description="Classes/types use PascalCase",
-                evidence=["UserService", "HttpClient"],
-                confidence=Confidence.HIGH,
-                language=Language.PYTHON,
-                file_path=Path("models.py"),
-            ),
-            CodePattern(
-                category=PatternCategory.NAMING,
-                name="function_naming",
-                description="Functions use snake_case",
-                evidence=["process_request"],
-                confidence=Confidence.HIGH,
-                language=Language.PYTHON,
-                file_path=Path("handler.py"),
-            ),
-        ]
-        analysis = _make_analysis(patterns)
+    def test_naming_skill_contains_stats(self) -> None:
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry(
+                    "function_naming",
+                    "Functions use snake_case",
+                    file_count=34,
+                    total_files=39,
+                    evidence=["detect_project", "analyze_project", "generate_skills"],
+                ),
+                _make_entry(
+                    "class_naming",
+                    "Classes use PascalCase",
+                    file_count=12,
+                    total_files=12,
+                    evidence=["ProjectInfo", "CodePattern", "SkillDefinition"],
+                ),
+            ],
+        })
+
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
         naming_skills = [s for s in result.skills if s.name == "naming-conventions"]
         assert len(naming_skills) == 1
         content = naming_skills[0].content
-        # Should reference the actual pattern
+        # Should contain actual stats.
+        assert "34/39" in content
         assert "snake_case" in content
         assert "PascalCase" in content
+        # Should reference evidence.
+        assert "detect_project" in content
 
-    def test_error_handling_skill_is_specific(self) -> None:
-        patterns = [
-            CodePattern(
-                category=PatternCategory.ERROR_HANDLING,
-                name="exception_types",
-                description="Uses try/except with types: ValueError, KeyError",
-                evidence=["except ValueError", "except KeyError"],
-                confidence=Confidence.HIGH,
-                language=Language.PYTHON,
-                file_path=Path("handler.py"),
-            ),
-            CodePattern(
-                category=PatternCategory.ERROR_HANDLING,
-                name="custom_exceptions",
-                description="Defines custom exceptions: ValidationError",
-                evidence=["class ValidationError"],
-                confidence=Confidence.HIGH,
-                language=Language.PYTHON,
-                file_path=Path("errors.py"),
-            ),
-            CodePattern(
-                category=PatternCategory.ERROR_HANDLING,
-                name="raise_style",
-                description="Raises: ValueError, NotFoundError",
-                evidence=["raise ValueError", "raise NotFoundError"],
-                confidence=Confidence.MEDIUM,
-                language=Language.PYTHON,
-                file_path=Path("service.py"),
-            ),
-        ]
-        analysis = _make_analysis(patterns)
+    def test_no_static_guidelines_in_output(self) -> None:
+        conventions = _make_conventions({
+            PatternCategory.ERROR_HANDLING: [
+                _make_entry("exception_types", "Uses try/except with ValueError"),
+            ],
+            PatternCategory.LOGGING: [
+                _make_entry("logging_library", "Uses stdlib logging module"),
+            ],
+        })
+
         generator = LocalGenerator()
-        result = generator.generate(analysis)
+        result = generator.generate(conventions)
 
-        err_skills = [s for s in result.skills if s.name == "error-handling"]
-        assert len(err_skills) == 1
-        content = err_skills[0].content
-        assert "ValueError" in content or "custom" in content.lower()
+        for skill in result.skills:
+            content = skill.content.lower()
+            # No static generic guidelines should appear.
+            assert "never log sensitive data" not in content
+            assert "always catch specific exception" not in content
+            assert "use structured logging where possible" not in content
+
+    def test_config_values_appear_in_style_skill(self) -> None:
+        conventions = _make_conventions(
+            {
+                PatternCategory.STYLE: [
+                    _make_entry("line_length", "Max line length is 100"),
+                    _make_entry("quote_style", "Uses double quotes"),
+                ],
+            },
+            config_settings={
+                "ruff.line-length": "100",
+                "ruff.select": "E, F, W, I",
+                "mypy.strict": "true",
+            },
+            config_files_parsed=["pyproject.toml [tool.ruff]", "pyproject.toml [tool.mypy]"],
+        )
+        # Inject config into the style category.
+        conventions.categories[PatternCategory.STYLE].config_values = {
+            "ruff.line-length": "100",
+            "ruff.select": "E, F, W, I",
+            "mypy.strict": "true",
+        }
+
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+
+        style_skills = [s for s in result.skills if s.name == "code-style"]
+        assert len(style_skills) == 1
+        content = style_skills[0].content
+        assert "ruff" in content.lower()
+        assert "100" in content
+
+    def test_confidence_comment_present(self) -> None:
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry("function_naming", "Functions use snake_case"),
+            ],
+        })
+
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+
+        for skill in result.skills:
+            assert "<!-- Confidence:" in skill.content
+
+    def test_evidence_examples_in_output(self) -> None:
+        conventions = _make_conventions({
+            PatternCategory.NAMING: [
+                _make_entry(
+                    "function_naming",
+                    "Functions use snake_case",
+                    evidence=["get_user_by_id", "validate_email"],
+                ),
+            ],
+        })
+
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+
+        naming_skills = [s for s in result.skills if s.name == "naming-conventions"]
+        assert len(naming_skills) == 1
+        content = naming_skills[0].content
+        assert "get_user_by_id" in content
+        assert "validate_email" in content
 
 
 class TestEndToEndGeneration:
-    """End-to-end tests combining analyzer and generator."""
+    """End-to-end tests combining analyzer, synthesizer, and generator."""
 
     def test_python_project_generates_skills(self, tmp_path: Path) -> None:
         """A realistic Python project should produce multiple skills."""
@@ -389,12 +488,12 @@ def test_validation_error():
         )
 
         analysis = analyze_project(project_info)
-        result = generate_skills(analysis, mode=GenerationMode.LOCAL)
+        conventions = synthesize(analysis)
+        result = generate_skills(conventions, mode=GenerationMode.LOCAL)
 
-        # Should generate multiple skills
+        # Should generate multiple skills.
         assert len(result.skills) >= 2
-        # Each skill should have non-trivial content
+        # Each skill should have non-trivial content.
         for skill in result.skills:
             assert len(skill.content.strip()) > 50
-            # Content should have markdown structure
             assert "#" in skill.content

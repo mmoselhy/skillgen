@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import dataclasses
+import enum
+import json
 from pathlib import Path
 
 import typer
@@ -11,7 +14,7 @@ from skillgen import __version__
 from skillgen.analyzer import analyze_project
 from skillgen.detector import detect_project
 from skillgen.generator import GenerationMode, generate_skills
-from skillgen.models import OutputFormat
+from skillgen.models import OutputFormat, WrittenFile
 from skillgen.renderer import (
     create_progress,
     render_diff,
@@ -19,6 +22,7 @@ from skillgen.renderer import (
     render_stats,
     render_summary,
 )
+from skillgen.synthesizer import synthesize
 from skillgen.writer import write_skills
 
 app = typer.Typer(
@@ -36,6 +40,34 @@ def _version_callback(value: bool) -> None:
     if value:
         _console.print(f"skillgen {__version__}")
         raise typer.Exit()
+
+
+def _json_serializer(obj: object) -> object:
+    """Custom JSON serializer for Path and Enum types."""
+    if isinstance(obj, Path):
+        return str(obj)
+    if isinstance(obj, enum.Enum):
+        return obj.value
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def _make_json_serializable(obj: object) -> object:
+    """Recursively convert dataclass dicts to JSON-serializable form.
+
+    Handles dict keys that are Enum types (e.g., PatternCategory keys in categories).
+    """
+    if isinstance(obj, dict):
+        return {
+            (k.value if isinstance(k, enum.Enum) else k): _make_json_serializable(v)
+            for k, v in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_make_json_serializable(item) for item in obj]
+    if isinstance(obj, Path):
+        return str(obj)
+    if isinstance(obj, enum.Enum):
+        return obj.value
+    return obj
 
 
 @app.command()
@@ -72,6 +104,11 @@ def main(
         "-q",
         help="Suppress all output except errors.",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output analysis as JSON and exit.",
+    ),
     llm: bool = typer.Option(
         False,
         "--llm",
@@ -81,6 +118,31 @@ def main(
         None,
         "--llm-provider",
         help="LLM provider: 'anthropic' or 'openai'. Auto-detected from env by default.",
+    ),
+    no_tree_sitter: bool = typer.Option(
+        False,
+        "--no-tree-sitter",
+        help="Disable tree-sitter parsing even if installed (use regex fallback).",
+    ),
+    enrich: bool = typer.Option(
+        False,
+        "--enrich",
+        help="Search online index for community skills matching this project.",
+    ),
+    apply_enrich: bool = typer.Option(
+        False,
+        "--apply",
+        help="Download and install matched community skills (use with --enrich).",
+    ),
+    pick: str | None = typer.Option(
+        None,
+        "--pick",
+        help="Comma-separated skill numbers to cherry-pick (e.g., --pick 1,3).",
+    ),
+    no_cache: bool = typer.Option(
+        False,
+        "--no-cache",
+        help="Force re-fetch of online skill index, ignoring cache.",
     ),
     version: bool | None = typer.Option(
         None,
@@ -115,8 +177,24 @@ def main(
         _console.print(f"[red]Error:[/red] {path} is not a directory.")
         raise typer.Exit(code=1)
 
+    # --- Enrich flag validation ---
+    if apply_enrich and not enrich:
+        _console.print("[red]Error:[/red] Use --enrich --apply together.")
+        raise typer.Exit(code=1)
+    if pick is not None and not apply_enrich:
+        _console.print("[red]Error:[/red] Use --pick with --enrich --apply.")
+        raise typer.Exit(code=1)
+
+    pick_indices: list[int] | None = None
+    if pick is not None:
+        try:
+            pick_indices = [int(x.strip()) for x in pick.split(",")]
+        except ValueError:
+            _console.print("[red]Error:[/red] --pick must be comma-separated numbers (e.g., --pick 1,3).")
+            raise typer.Exit(code=1) from None
+
     try:
-        progress = create_progress(quiet=quiet)
+        progress = create_progress(quiet=quiet or json_output)
 
         with progress:
             # Phase 1: Detect
@@ -139,7 +217,9 @@ def main(
 
             # Phase 2: Analyze
             task_analyze = progress.add_task("Analyzing patterns...", total=1)
-            analysis = analyze_project(project_info, verbose=verbose)
+            analysis = analyze_project(
+                project_info, verbose=verbose, use_tree_sitter=not no_tree_sitter
+            )
             progress.update(task_analyze, completed=1)
 
             if verbose and not quiet:
@@ -148,11 +228,73 @@ def main(
                     f"{analysis.files_analyzed} files[/dim]"
                 )
 
-            # Phase 3: Generate
+            # Phase 2.5: Synthesize
+            task_synth = progress.add_task("Synthesizing conventions...", total=1)
+            conventions = synthesize(analysis)
+            progress.update(task_synth, completed=1)
+
+            if verbose and not quiet:
+                cat_count = len(conventions.categories)
+                entry_count = sum(
+                    len(s.entries) for s in conventions.categories.values()
+                )
+                cfg_count = len(conventions.config_settings)
+                progress.console.print(
+                    f"  [dim]{entry_count} conventions in {cat_count} categories, "
+                    f"{cfg_count} config values[/dim]"
+                )
+
+            # --json: serialize and exit
+            if json_output:
+                progress.stop()
+                raw = dataclasses.asdict(conventions)
+                data = _make_json_serializable(raw)
+                print(json.dumps(data, default=_json_serializer, indent=2))
+                raise typer.Exit(code=0)
+
+            # Phase 2.75: Enrich (optional, network)
+            enrich_result = None
+            enrich_written: list[WrittenFile] = []
+            if enrich:
+                from skillgen.enricher import apply as enrich_apply
+                from skillgen.enricher import search as enrich_search
+
+                task_enrich = progress.add_task("Searching community skills...", total=1)
+                enrich_result = enrich_search(
+                    conventions, cache_dir=None, no_cache=no_cache
+                )
+                progress.update(task_enrich, completed=1)
+
+                if apply_enrich:
+                    selected_entries = enrich_result.matched
+                    if pick_indices:
+                        max_idx = len(enrich_result.matched)
+                        invalid = [i for i in pick_indices if i < 1 or i > max_idx]
+                        if invalid:
+                            progress.stop()
+                            _console.print(
+                                f"[red]Error:[/red] Invalid --pick values: {invalid}. "
+                                f"Only {max_idx} skills matched (valid range: 1-{max_idx})."
+                            )
+                            raise typer.Exit(code=1)
+                        selected_entries = [
+                            enrich_result.matched[i - 1] for i in pick_indices
+                        ]
+
+                    task_apply = progress.add_task("Installing community skills...", total=1)
+                    enrich_written = enrich_apply(
+                        entries=selected_entries,
+                        target_dir=resolved,
+                        output_format=format,
+                        no_cache=no_cache,
+                    )
+                    progress.update(task_apply, completed=1)
+
+            # Phase 3: Generate (now uses conventions)
             task_generate = progress.add_task("Generating skills...", total=1)
             mode = GenerationMode.LLM if llm else GenerationMode.LOCAL
             generation = generate_skills(
-                analysis,
+                conventions,
                 mode=mode,
                 llm_provider=llm_provider,
             )
@@ -173,12 +315,21 @@ def main(
             render_dry_run(generation, quiet=quiet)
 
         if diff:
-            render_diff(analysis, generation, format=format)
+            render_diff(conventions, generation, format=format)
 
         if not quiet:
             render_summary(written_files, dry_run=dry_run)
             if verbose:
-                render_stats(analysis, generation, written_files)
+                render_stats(conventions, generation, written_files)
+
+        # Render enrichment results
+        if enrich and enrich_result is not None:
+            from skillgen.renderer import render_enrich_applied, render_enrich_preview
+
+            if apply_enrich:
+                render_enrich_applied(enrich_written)
+            else:
+                render_enrich_preview(enrich_result)
 
     except typer.Exit:
         raise

@@ -228,3 +228,79 @@ class WrittenFile:
     format: str
     line_count: int
     dry_run: bool = False
+
+
+# --- Synthesizer Data Structures ---
+
+
+@dataclass
+class ConventionEntry:
+    """A single synthesized convention with project-wide stats."""
+
+    name: str
+    description: str
+    prevalence: float  # 0.0-1.0 fraction of analyzed files showing this
+    file_count: int
+    total_files: int
+    confidence: Confidence
+    evidence: list[str]  # deduplicated top examples (max 5)
+    language: Language | None = None
+    conflict: str | None = None
+
+
+@dataclass
+class CategorySummary:
+    """Synthesized conventions for one pattern category."""
+
+    category: PatternCategory
+    entries: list[ConventionEntry]  # ranked by prevalence descending
+    files_analyzed: int
+    raw_pattern_count: int  # before dedup
+    config_values: dict[str, str] = field(default_factory=dict)  # from parsed config files
+
+    @property
+    def confidence_level(self) -> Confidence:
+        """Overall confidence for this category based on file count and pattern diversity."""
+        if self.files_analyzed >= 20 and len(self.entries) >= 3:
+            return Confidence.HIGH
+        if self.files_analyzed >= 5 and len(self.entries) >= 2:
+            return Confidence.MEDIUM
+        return Confidence.LOW
+
+
+@dataclass
+class ProjectConventions:
+    """Complete synthesized project conventions -- the output of the synthesizer."""
+
+    project_info: ProjectInfo
+    categories: dict[PatternCategory, CategorySummary]
+    config_settings: dict[str, str]
+    config_files_parsed: list[str]
+    files_analyzed: int
+    analysis_duration_seconds: float
+    synthesis_duration_seconds: float = 0.0
+
+
+# --- Enricher Data Structures ---
+
+
+@dataclass
+class IndexEntry:
+    """A single skill entry from the online skill index."""
+
+    id: str
+    name: str
+    language: str
+    framework: str | None
+    categories: list[str]
+    path: str
+    description: str
+
+
+@dataclass
+class EnrichmentResult:
+    """Result of searching the online skill index."""
+
+    matched: list[IndexEntry]
+    skipped_categories: list[str]
+    errors: list[str] = field(default_factory=list)

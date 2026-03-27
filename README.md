@@ -2,63 +2,56 @@
 
 **Analyze any codebase and auto-generate AI agent skill files for Claude Code, Cursor, and other AI tools.**
 
-Stop hand-writing `.claude/skills/` and `.cursor/rules/` files. Run one command, and every AI assistant on your team speaks your project's language -- naming conventions, test patterns, error handling, architecture, and more.
+Stop hand-writing `.claude/skills/` and `.cursor/rules/` files. Run one command, and every AI assistant on your team speaks your project's language — naming conventions, test patterns, error handling, architecture, and more. Every line in the output is backed by evidence from your actual codebase.
 
 ```
-$ skillgen . --dry-run
+$ skillgen . --dry-run --format claude
 
  Scanning files and detecting languages...  0:00
- Analyzing patterns...                      0:01
+ Analyzing patterns...                      0:00
+ Synthesizing conventions...                0:00
  Generating skills...                       0:00
  Writing files...                           0:00
 
 --- naming-conventions (dry run, not written) ---
 # Naming Conventions
+<!-- Confidence: MEDIUM | Based on 14 files, 22 patterns -->
 
-This project (Python) follows these naming conventions.
+Naming conventions observed in this Python project.
 
 ## Function Naming
-- Functions use snake_case
-  - Examples: `detect_project`, `analyze_project`, `generate_skills`
+- **82% Functions use snake_case** (14/17 files)
+  - Examples: `analyze_project (analyzer.py)`, `display_name (models.py)`
 
-## Class/Type Naming
-- Classes use PascalCase
-  - Examples: `ProjectInfo`, `CodePattern`, `SkillDefinition`
+## Class Naming
+- **41% Classes/types use PascalCase** (7/17 files)
+  - Examples: `Language (models.py)`, `PatternCategory (models.py)`
 
-## File Naming
-- Python files: `snake_case.py`
+--- code-style (dry run, not written) ---
+# Code Style
+<!-- Confidence: MEDIUM | Based on 15 files, 53 patterns -->
 
---- testing (dry run, not written) ---
-# Testing
+## Line Length
+- **64% Lines generally within 120 characters** (11/17 files)
+  - Configured in ruff: line-length = 100
 
-Testing conventions for Python.
+## Quote Style
+- **88% Prefers double quotes** (15/17 files)
 
-## Test Framework
-- Uses pytest as the test runner
-- Tests live in a top-level `tests/` directory
+## Type Hints
+- **88% Uses type hints** (15/17 files)
 
-## Test File Naming
-- Example: `test_analyzer.py`
-- Example: `test_detector.py`
-- Example: `test_generator.py`
+## Formatters & Linters
+- ruff -- configured in pyproject.toml
+  - line-length: 100
+  - select: E, F, W, I, N, UP, B, SIM, RUF
+  - target-version: py311
+- mypy -- strict mode enabled
+  - python_version: 3.11
 
 ...
 
-                  Generated Skill Files (dry run)
- File                                       Format     Lines
- .claude/skills/naming-conventions.md       Claude        28
- .claude/skills/error-handling.md           Claude        31
- .claude/skills/testing.md                  Claude        42
- .claude/skills/imports-and-dependencies.md Claude        26
- .claude/skills/documentation.md            Claude        24
- .claude/skills/architecture.md             Claude        35
- .claude/skills/code-style.md               Claude        30
- .claude/skills/logging-and-observability.md Claude       27
- .cursor/rules/naming-conventions.mdc       Cursor        28
- ...
- AGENTS.md                                  Agents.Md    187
-
- Done! 17 file(s) would be generated.
+Done! 17 file(s) would be generated.
 ```
 
 ## Installation
@@ -109,8 +102,12 @@ Flags:
   --dry-run     Run the full analysis and generation pipeline but print
                 output to stdout instead of writing files to disk.
 
+  --json        Output the full analysis as structured JSON and exit.
+                Includes all detected conventions, config values, and
+                stats. Useful for piping to other tools or dashboards.
+
   --verbose, -v Show detailed analysis steps: detected languages,
-                pattern counts, and a stats summary panel.
+                pattern counts, synthesis stats, and a summary panel.
 
   --quiet, -q   Suppress all output except errors. Useful for scripting
                 and CI pipelines.
@@ -121,6 +118,11 @@ Flags:
   --llm-provider <anthropic|openai>
                 Explicitly select the LLM provider. By default, skillgen
                 auto-detects from environment variables.
+
+  --no-tree-sitter
+                Disable tree-sitter AST parsing even if installed, and
+                use regex-based analysis instead. Useful for debugging
+                or benchmarking.
 
   --version     Print the version and exit.
   --help        Print help and exit.
@@ -144,6 +146,9 @@ skillgen ./my-project --format cursor
 # See what the AI agent would learn
 skillgen ./my-project --diff
 
+# Export analysis as JSON for custom tooling
+skillgen ./my-project --json > conventions.json
+
 # Full detail mode
 skillgen ./my-project --verbose
 
@@ -156,55 +161,57 @@ ANTHROPIC_API_KEY=sk-... skillgen ./my-project --llm
 
 ## Output Format Examples
 
-### Claude Code: `.claude/skills/testing.md`
+### Claude Code: `.claude/skills/code-style.md`
 
 ```markdown
-<!-- Generated by skillgen v1.0.0 on 2026-03-24. Do not edit manually. -->
+<!-- Generated by skillgen v0.1.0 on 2026-03-27. Do not edit manually. -->
 
 ---
-name: testing
-description: Test framework, file organization, fixtures, assertion style.
+name: code-style
+description: Formatting, line length, quote style, linter/formatter usage.
 ---
 
-# Testing
+# Code Style
+<!-- Confidence: MEDIUM | Based on 15 files, 53 patterns -->
 
-Testing conventions for Python.
+Code style conventions observed in this Python project.
 
-## Test Framework
-- Uses pytest as the test runner
-- Tests live in a top-level `tests/` directory
+## Line Length
+- **64% Lines generally within 120 characters** (11/17 files)
+  - Configured in ruff: line-length = 100
 
-## Test File Naming
-- Example: `test_analyzer.py`
-- Example: `test_detector.py`
+## Quote Style
+- **88% Prefers double quotes** (15/17 files)
 
-## Assertion Style
-- Uses plain `assert` statements
+## Type Hints
+- **88% Uses type hints** (15/17 files)
 
-## Fixtures
-- Fixtures are defined in `conftest.py`
-- Define shared fixtures in `conftest.py` at each directory level
+## Trailing Commas
+- **64% Uses trailing commas in collections and function args** (11/17 files)
 
-## General Guidelines
-- Keep tests focused: one behavior per test function
-- Use descriptive test names that explain the expected behavior
-- Arrange-Act-Assert pattern for test structure
+## Formatters & Linters
+- **ruff** -- configured in pyproject.toml
+  - line-length: 100
+  - select: E, F, W, I, N, UP, B, SIM, RUF
+  - target-version: py311
+- **mypy** -- configured in pyproject.toml
+  - python_version: 3.11
+  - strict: true
 ```
 
-### Cursor: `.cursor/rules/testing.mdc`
+### Cursor: `.cursor/rules/code-style.mdc`
 
 ```markdown
-<!-- Generated by skillgen v1.0.0 on 2026-03-24. Do not edit manually. -->
+<!-- Generated by skillgen v0.1.0 on 2026-03-27. Do not edit manually. -->
 
 ---
-description: Test framework, file organization, fixtures, assertion style.
+description: Formatting, line length, quote style, linter/formatter usage.
 globs: *.py, *.pyi
-alwaysApply: false
+alwaysApply: true
 ---
 
-# Testing
-
-Testing conventions for Python.
+# Code Style
+<!-- Confidence: MEDIUM | Based on 15 files, 53 patterns -->
 ...
 ```
 
@@ -214,15 +221,26 @@ A single Markdown file at the repo root with H2 headings per skill category, del
 
 ## How It Works
 
-skillgen runs a four-stage pipeline, entirely local and deterministic by default:
+skillgen runs a five-stage pipeline, entirely local and deterministic by default:
 
-1. **Detect** -- Walks the file tree (respecting `.gitignore` and skipping vendored directories like `node_modules/`, `vendor/`, `__pycache__/`). Counts file extensions, reads package manifests (`pyproject.toml`, `package.json`, `go.mod`, etc.), and identifies languages and frameworks.
+1. **Detect** -- Walks the file tree (skipping vendored directories like `node_modules/`, `vendor/`, `__pycache__/`). Counts file extensions, reads package manifests (`pyproject.toml`, `package.json`, `go.mod`, etc.), and identifies languages and frameworks.
 
-2. **Analyze** -- Selects a representative sample of source files (up to 50 per language, drawn from diverse directories). Extracts patterns across 8 categories using regex-based heuristics: naming conventions, error handling, testing, imports, documentation, architecture, code style, and logging.
+2. **Analyze** -- Selects a representative sample of source files (up to 50 per language, drawn from diverse directories). Extracts patterns across 8 categories: naming conventions, error handling, testing, imports, documentation, architecture, code style, and logging. When tree-sitter is installed, uses AST-based extraction for accurate, false-positive-free analysis. Falls back to regex heuristics per-language when a grammar is unavailable.
 
-3. **Generate** -- Renders skill file content from the extracted patterns using category-specific template renderers. Skills with fewer than 3 detected patterns are skipped to avoid vague output. Optionally, the `--llm` flag sends drafts to an LLM for enhancement.
+3. **Synthesize** -- Deduplicates raw patterns across files, computes project-wide prevalence statistics (e.g., "82% of functions use snake_case"), parses tool config files (ruff, prettier, mypy, eslint, golangci-lint) for actual settings, and filters low-confidence noise. Produces a clean `ProjectConventions` summary.
 
-4. **Write** -- Writes files atomically (temp file + rename) to `.claude/skills/`, `.cursor/rules/`, and/or `AGENTS.md`. Cleans up orphaned skill files from previous runs. In `--dry-run` mode, prints to stdout instead.
+4. **Generate** -- Renders evidence-only skill content from the synthesized conventions. Every line is backed by codebase data — no static boilerplate or generic advice. Each skill includes a confidence meter based on how many files and patterns contributed.
+
+5. **Write** -- Writes files atomically (temp file + rename) to `.claude/skills/`, `.cursor/rules/`, and/or `AGENTS.md`. Cleans up orphaned skill files from previous runs. In `--dry-run` mode, prints to stdout instead.
+
+```
+  path ──▶ DETECT ──▶ ANALYZE ──▶ SYNTHESIZE ──▶ GENERATE ──▶ WRITE
+            │          │            │               │            │
+         languages   patterns    conventions     skills       files
+         frameworks  evidence    config values   confidence   .claude/
+                     per-file    prevalence      meter        .cursor/
+                                 stats                        AGENTS.md
+```
 
 ## Supported Languages
 
@@ -238,9 +256,33 @@ skillgen runs a four-stage pipeline, entirely local and deterministic by default
 
 Frameworks are auto-detected from manifest contents and config files (Django, FastAPI, Flask, Next.js, React, Angular, Spring, Gin, Actix, and more).
 
+## Config File Parsing
+
+skillgen reads your actual tool configuration files and embeds their settings in the generated skills. This means AI assistants learn your *configured* line length, not just what they see in code.
+
+Supported config files:
+
+| Tool | Files Read | Settings Extracted |
+|------|-----------|-------------------|
+| ruff | `ruff.toml`, `pyproject.toml [tool.ruff]` | line-length, target-version, select rules, quote-style |
+| Prettier | `.prettierrc`, `.prettierrc.json` | singleQuote, semi, tabWidth, printWidth |
+| ESLint | `.eslintrc.json`, `.eslintrc.js` | Presence detected |
+| mypy | `mypy.ini`, `pyproject.toml [tool.mypy]` | strict mode, python_version |
+| golangci-lint | `.golangci.yml`, `.golangci.yaml` | Enabled linters |
+
+## JSON Output
+
+Use `--json` to export the full analysis as structured JSON for custom tooling, dashboards, or CI integrations:
+
+```bash
+skillgen ./my-project --json | jq '.categories["code-style"].entries[].description'
+```
+
+The JSON includes all detected conventions with prevalence stats, config values, evidence, and confidence scores.
+
 ## LLM Enhancement
 
-By default, skillgen generates all content locally with deterministic, rule-based templates -- no network access required.
+By default, skillgen generates all content locally with deterministic, evidence-based templates — no network access required.
 
 For higher-quality, more nuanced output, pass the `--llm` flag. skillgen will send each skill draft to an LLM for enhancement:
 
@@ -256,7 +298,7 @@ skillgen ./my-project --llm --llm-provider openai
 
 The LLM provider is auto-detected from environment variables. If both keys are set, Anthropic is preferred. You can override with `--llm-provider`.
 
-If the LLM call fails for any reason, skillgen falls back to local generation automatically -- your output is never lost.
+If the LLM call fails for any reason, skillgen falls back to local generation automatically — your output is never lost.
 
 **Optional dependencies for LLM mode:**
 
@@ -264,7 +306,23 @@ If the LLM call fails for any reason, skillgen falls back to local generation au
 pip install skillgen[llm]
 ```
 
-This installs the `anthropic` and `openai` SDKs.
+## Tree-sitter (Optional)
+
+By default, skillgen uses regex-based heuristics to analyze code patterns. For more accurate analysis, install tree-sitter support:
+
+```bash
+pip install skillgen[tree-sitter]
+```
+
+This installs tree-sitter grammars for all 7 supported languages. When available, skillgen automatically uses AST-based extraction, which:
+
+- **Eliminates false positives** from patterns matched inside strings, comments, or docstrings
+- **Detects type annotations** structurally (not just `->` in text)
+- **Distinguishes scope** — methods vs top-level functions, test helpers vs test functions
+- **Finds decorators accurately** — `@pytest.fixture`, `@property`, etc.
+- **Handles multi-line constructs** that regex cannot reliably parse
+
+Tree-sitter is used per-language: if a grammar is installed for Python but not Go, Python files get AST analysis while Go files use regex. To disable tree-sitter entirely (e.g., for benchmarking), pass `--no-tree-sitter`.
 
 ## Contributing
 

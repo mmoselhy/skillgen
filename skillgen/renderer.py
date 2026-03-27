@@ -9,10 +9,12 @@ from rich.table import Table
 from rich.text import Text
 
 from skillgen.models import (
-    AnalysisResult,
+    CategorySummary,
+    EnrichmentResult,
     GenerationResult,
     OutputFormat,
     PatternCategory,
+    ProjectConventions,
     SkillDefinition,
     WrittenFile,
 )
@@ -59,11 +61,11 @@ def render_summary(written_files: list[WrittenFile], dry_run: bool = False) -> N
 
 
 def render_diff(
-    analysis: AnalysisResult,
+    conventions: ProjectConventions,
     generation: GenerationResult,
     format: OutputFormat = OutputFormat.ALL,
 ) -> None:
-    """Render the --diff comparison table."""
+    """Render the --diff comparison table using ProjectConventions data."""
     console.print()
     console.print(Panel("[bold]=== Diff: What the AI Agent Learns ===[/bold]", expand=False))
 
@@ -73,8 +75,9 @@ def render_diff(
     table.add_column("With skillgen", style="green", min_width=45)
 
     for skill in generation.skills:
-        without = _detect_existing_guidance(skill.category, analysis)
-        with_sg = _summarize_skill(skill)
+        without = _detect_existing_guidance(skill.category, conventions)
+        summary = conventions.categories.get(skill.category)
+        with_sg = _summarize_convention(skill, summary)
         style = "yellow" if without != "(no guidance)" else "green"
         table.add_row(
             skill.category.display_name,
@@ -100,27 +103,31 @@ def render_dry_run(generation: GenerationResult, quiet: bool = False) -> None:
 
 
 def render_stats(
-    analysis: AnalysisResult,
+    conventions: ProjectConventions,
     generation: GenerationResult,
     written_files: list[WrittenFile],
 ) -> None:
     """Render a stats summary panel."""
-    project = analysis.project_info
+    project = conventions.project_info
     langs = ", ".join(project.language_names)
     frameworks = (
         ", ".join(fw.name for fw in project.frameworks) if project.frameworks else "none detected"
     )
+    entry_count = sum(len(s.entries) for s in conventions.categories.values())
+    config_count = len(conventions.config_settings)
 
     stats_text = (
         f"[bold]Languages:[/bold] {langs}\n"
         f"[bold]Frameworks:[/bold] {frameworks}\n"
         f"[bold]Files scanned:[/bold] {project.total_files}\n"
         f"[bold]Source files:[/bold] {project.source_files}\n"
-        f"[bold]Files analyzed:[/bold] {analysis.files_analyzed}\n"
-        f"[bold]Patterns detected:[/bold] {len(analysis.patterns)}\n"
+        f"[bold]Files analyzed:[/bold] {conventions.files_analyzed}\n"
+        f"[bold]Conventions synthesized:[/bold] {entry_count}\n"
+        f"[bold]Config values parsed:[/bold] {config_count}\n"
         f"[bold]Skills generated:[/bold] {len(generation.skills)}\n"
         f"[bold]Files written:[/bold] {len(written_files)}\n"
-        f"[bold]Analysis time:[/bold] {analysis.analysis_duration_seconds:.2f}s\n"
+        f"[bold]Analysis time:[/bold] {conventions.analysis_duration_seconds:.2f}s\n"
+        f"[bold]Synthesis time:[/bold] {conventions.synthesis_duration_seconds:.2f}s\n"
         f"[bold]Generation time:[/bold] {generation.timing_seconds:.2f}s"
     )
 
@@ -128,11 +135,13 @@ def render_stats(
     console.print(Panel(stats_text, title="[bold]skillgen Summary[/bold]", expand=False))
 
 
-def _detect_existing_guidance(category: PatternCategory, analysis: AnalysisResult) -> str:
+def _detect_existing_guidance(
+    category: PatternCategory, conventions: ProjectConventions
+) -> str:
     """Check if existing skill files provide guidance for this category."""
-    root = analysis.project_info.root_path
+    root = conventions.project_info.root_path
 
-    # Check for existing skill files
+    # Check for existing skill files.
     claude_path = root / ".claude" / "skills" / f"{category.skill_name}.md"
     cursor_path = root / ".cursor" / "rules" / f"{category.skill_name}.mdc"
 
@@ -142,15 +151,102 @@ def _detect_existing_guidance(category: PatternCategory, analysis: AnalysisResul
     return "(no guidance)"
 
 
-def _summarize_skill(skill: SkillDefinition) -> str:
-    """One-line summary of a skill's key patterns."""
-    # Extract the first non-empty, non-heading line from content
-    for line in skill.content.split("\n"):
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#") and not stripped.startswith("---"):
-            # Truncate to fit in a table cell
-            if len(stripped) > 80:
-                return stripped[:77] + "..."
-            return stripped
+def _summarize_convention(
+    skill: SkillDefinition,
+    summary: CategorySummary | None,
+) -> str:
+    """One-line summary of a skill's key conventions with stats."""
+    if summary is None:
+        return skill.description
+
+    parts: list[str] = []
+
+    # Count entries.
+    entry_count = len(summary.entries)
+    if entry_count > 0:
+        parts.append(f"{entry_count} rules")
+
+    # Show top entry's prevalence if available.
+    if summary.entries:
+        top = summary.entries[0]
+        if top.total_files > 0:
+            pct = top.file_count * 100 // top.total_files
+            parts.append(f"{pct}% {top.description}")
+
+    # Show config values count.
+    if summary.config_values:
+        parts.append(f"{len(summary.config_values)} config values")
+
+    if parts:
+        result = " | ".join(parts)
+        if len(result) > 80:
+            return result[:77] + "..."
+        return result
 
     return skill.description
+
+
+def render_enrich_preview(result: EnrichmentResult) -> None:
+    """Show a Rich table when --enrich is used without --apply."""
+    if not result.matched and result.errors:
+        console.print(f"\n[yellow]Warning:[/yellow] {result.errors[0]}")
+        return
+    if not result.matched:
+        console.print("\n[dim]No community skills found.[/dim]")
+        return
+
+    table = Table(
+        title="Community Skills Matching This Project",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    table.add_column("#", style="bold", justify="right")
+    table.add_column("Skill", style="cyan", min_width=25)
+    table.add_column("Categories", style="green")
+    table.add_column("Description", style="dim")
+
+    for idx, entry in enumerate(result.matched, start=1):
+        categories = ", ".join(entry.categories)
+        table.add_row(str(idx), entry.name, categories, entry.description)
+
+    console.print()
+    console.print(table)
+
+    if result.skipped_categories:
+        console.print(
+            f"\n[dim]Skipped (already covered locally): "
+            f"{', '.join(result.skipped_categories)}[/dim]"
+        )
+
+    console.print(
+        "\n[bold]To install:[/bold] skillgen . --enrich --apply"
+    )
+    console.print(
+        "[bold]To pick:[/bold] skillgen . --enrich --apply --pick 1,2"
+    )
+
+
+def render_enrich_applied(written: list[WrittenFile]) -> None:
+    """Show result after --enrich --apply."""
+    if not written:
+        console.print("\n[dim]No community skill files written.[/dim]")
+        return
+
+    table = Table(
+        title="Community Skill Files Installed",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    table.add_column("File", style="cyan", min_width=40)
+    table.add_column("Format", style="green", justify="center")
+    table.add_column("Lines", style="yellow", justify="right")
+
+    for wf in sorted(written, key=lambda f: str(f.path)):
+        table.add_row(str(wf.path), wf.format.title(), str(wf.line_count))
+
+    console.print()
+    console.print(table)
+    console.print(
+        f"\n[bold green]Done![/bold green] "
+        f"{len(written)} community skill file(s) installed."
+    )
