@@ -203,7 +203,7 @@ def main(
         valid_tiers = {"official", "community", "contributed", "all"}
         if trust.lower() not in valid_tiers:
             _console.print(
-                f"[red]Error:[/red] --trust must be one of: official, community, contributed, all."
+                "[red]Error:[/red] --trust must be one of: official, community, contributed, all."
             )
             raise typer.Exit(code=1)
         if trust.lower() != "all":
