@@ -135,9 +135,7 @@ def render_stats(
     console.print(Panel(stats_text, title="[bold]skillgen Summary[/bold]", expand=False))
 
 
-def _detect_existing_guidance(
-    category: PatternCategory, conventions: ProjectConventions
-) -> str:
+def _detect_existing_guidance(category: PatternCategory, conventions: ProjectConventions) -> str:
     """Check if existing skill files provide guidance for this category."""
     root = conventions.project_info.root_path
 
@@ -220,15 +218,9 @@ def render_enrich_preview(result: EnrichmentResult) -> None:
             f"{', '.join(result.skipped_categories)}[/dim]"
         )
 
-    console.print(
-        "\n[bold]To install:[/bold]  skillgen . --enrich --apply"
-    )
-    console.print(
-        "[bold]To filter:[/bold]   skillgen . --enrich --trust official"
-    )
-    console.print(
-        "[bold]To pick:[/bold]     skillgen . --enrich --apply --pick 1,2"
-    )
+    console.print("\n[bold]To install:[/bold]  skillgen . --enrich --apply")
+    console.print("[bold]To filter:[/bold]   skillgen . --enrich --trust official")
+    console.print("[bold]To pick:[/bold]     skillgen . --enrich --apply --pick 1,2")
 
 
 def render_enrich_applied(written: list[WrittenFile]) -> None:
@@ -252,6 +244,5 @@ def render_enrich_applied(written: list[WrittenFile]) -> None:
     console.print()
     console.print(table)
     console.print(
-        f"\n[bold green]Done![/bold green] "
-        f"{len(written)} community skill file(s) installed."
+        f"\n[bold green]Done![/bold green] {len(written)} community skill file(s) installed."
     )

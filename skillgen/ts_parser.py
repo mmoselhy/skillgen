@@ -52,15 +52,14 @@ def _load_grammar(pkg_name: str, func_name: str) -> Any:
     except (ImportError, NameError, AttributeError, OSError):
         return None
 
+
 # Cache for loaded language objects and parsers.
 _language_cache: dict[str, Any] = {}
 _parser_cache: dict[str, Any] = {}
 
 
 # Build lookup from cache_key -> (pkg, func) for lazy loading.
-_GRAMMAR_LOOKUP: dict[str, tuple[str, str]] = {
-    key: (pkg, fn) for key, pkg, fn in _GRAMMAR_SPECS
-}
+_GRAMMAR_LOOKUP: dict[str, tuple[str, str]] = {key: (pkg, fn) for key, pkg, fn in _GRAMMAR_SPECS}
 
 
 def _get_ts_language(key: str) -> Any:

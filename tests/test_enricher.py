@@ -206,9 +206,7 @@ class TestFetchIndex:
         mock_urlopen.assert_not_called()
 
     @patch("skillgen.enricher.urlopen")
-    def test_network_failure_returns_empty(
-        self, mock_urlopen: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_network_failure_returns_empty(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
         """Network failure with no cache returns empty list."""
         mock_urlopen.side_effect = OSError("Connection refused")
 
@@ -216,9 +214,7 @@ class TestFetchIndex:
         assert entries == []
 
     @patch("skillgen.enricher.urlopen")
-    def test_malformed_json_returns_empty(
-        self, mock_urlopen: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_malformed_json_returns_empty(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
         """Malformed JSON returns empty list."""
         mock_urlopen.return_value = _mock_urlopen_response("{not valid json")
 
@@ -241,9 +237,7 @@ class TestMatching:
 
     def test_match_by_framework(self) -> None:
         """Entries matching both language and framework are returned."""
-        conventions = _make_conventions(
-            languages=[Language.PYTHON], frameworks=["pytest"]
-        )
+        conventions = _make_conventions(languages=[Language.PYTHON], frameworks=["pytest"])
         pytest_entry = _make_index_entry(framework="pytest")
         django_entry = _make_index_entry(
             id="django-patterns", framework="django", path="skills/python/django.md"
@@ -259,9 +253,7 @@ class TestMatching:
             languages=[Language.PYTHON],
             categories=[PatternCategory.TESTING],
         )
-        entry = _make_index_entry(
-            framework=None, categories=["testing"]
-        )
+        entry = _make_index_entry(framework=None, categories=["testing"])
 
         matched, skipped = _match_entries([entry], conventions)
         assert len(matched) == 0
@@ -297,9 +289,7 @@ class TestMatching:
             languages=[Language.PYTHON],
             categories=[PatternCategory.TESTING],
         )
-        entry = _make_index_entry(
-            framework=None, categories=["testing"], trust="official"
-        )
+        entry = _make_index_entry(framework=None, categories=["testing"], trust="official")
 
         matched, skipped = _match_entries([entry], conventions)
         assert len(matched) == 1
@@ -328,9 +318,7 @@ class TestMatching:
             languages=[Language.PYTHON],
             categories=[PatternCategory.TESTING],
         )
-        entry = _make_index_entry(
-            framework=None, categories=["testing"], trust="community"
-        )
+        entry = _make_index_entry(framework=None, categories=["testing"], trust="community")
 
         matched, skipped = _match_entries([entry], conventions)
         assert len(matched) == 0
@@ -433,9 +421,7 @@ class TestApply:
         assert "entry-one" in str(written[0].path)
 
     @patch("skillgen.enricher.urlopen")
-    def test_skips_failed_downloads(
-        self, mock_urlopen: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_skips_failed_downloads(self, mock_urlopen: MagicMock, tmp_path: Path) -> None:
         """Failed downloads are skipped, not raising."""
         mock_urlopen.side_effect = OSError("Network error")
 
@@ -520,26 +506,30 @@ class TestParseIndexV2:
     def test_parse_v2_with_all_fields(self) -> None:
         from skillgen.enricher import _parse_index
 
-        content = json.dumps({
-            "version": 2,
-            "updated": "2026-03-28T04:30:00Z",
-            "sources_crawled": ["anthropics/skills"],
-            "skills": [{
-                "id": "anthropic-frontend",
-                "name": "Frontend Design",
-                "language": "any",
-                "framework": None,
-                "categories": ["architecture"],
-                "path": "skills/frontend/SKILL.md",
-                "description": "Frontend design skill",
-                "source_repo": "anthropics/skills",
-                "content_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend/SKILL.md",
-                "trust": "official",
-                "format": "skill-md",
-                "tags": ["frontend"],
-                "updated_at": "2026-03-15",
-            }],
-        })
+        content = json.dumps(
+            {
+                "version": 2,
+                "updated": "2026-03-28T04:30:00Z",
+                "sources_crawled": ["anthropics/skills"],
+                "skills": [
+                    {
+                        "id": "anthropic-frontend",
+                        "name": "Frontend Design",
+                        "language": "any",
+                        "framework": None,
+                        "categories": ["architecture"],
+                        "path": "skills/frontend/SKILL.md",
+                        "description": "Frontend design skill",
+                        "source_repo": "anthropics/skills",
+                        "content_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend/SKILL.md",
+                        "trust": "official",
+                        "format": "skill-md",
+                        "tags": ["frontend"],
+                        "updated_at": "2026-03-15",
+                    }
+                ],
+            }
+        )
         entries = _parse_index(content)
         assert len(entries) == 1
         assert entries[0].trust == "official"
@@ -549,14 +539,20 @@ class TestParseIndexV2:
     def test_parse_v1_gets_defaults(self) -> None:
         from skillgen.enricher import _parse_index
 
-        content = json.dumps({"skills": [{
-            "id": "old-skill",
-            "name": "Old Skill",
-            "language": "python",
-            "categories": ["testing"],
-            "path": "old.md",
-            "description": "Legacy",
-        }]})
+        content = json.dumps(
+            {
+                "skills": [
+                    {
+                        "id": "old-skill",
+                        "name": "Old Skill",
+                        "language": "python",
+                        "categories": ["testing"],
+                        "path": "old.md",
+                        "description": "Legacy",
+                    }
+                ]
+            }
+        )
         entries = _parse_index(content)
         assert len(entries) == 1
         assert entries[0].trust == "contributed"
@@ -604,8 +600,13 @@ class TestIndexEntryV2:
     def test_v2_fields_have_defaults(self) -> None:
         """v2 fields are optional with sensible defaults."""
         entry = IndexEntry(
-            id="test", name="Test", language="python", framework=None,
-            categories=["testing"], path="test.md", description="Test",
+            id="test",
+            name="Test",
+            language="python",
+            framework=None,
+            categories=["testing"],
+            path="test.md",
+            description="Test",
         )
         assert entry.source_repo == ""
         assert entry.content_url == ""

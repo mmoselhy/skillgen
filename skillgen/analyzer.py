@@ -54,8 +54,13 @@ def analyze_project(
 
     # Regex extractors (same signature for all 7 categories)
     regex_extractors = [
-        _extract_naming, _extract_error_handling, _extract_testing,
-        _extract_imports, _extract_documentation, _extract_style, _extract_logging,
+        _extract_naming,
+        _extract_error_handling,
+        _extract_testing,
+        _extract_imports,
+        _extract_documentation,
+        _extract_style,
+        _extract_logging,
     ]
 
     for lang_info in project_info.languages:

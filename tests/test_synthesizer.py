@@ -245,9 +245,7 @@ class TestConfigParsing:
     def test_mypy_from_pyproject(self, tmp_path: Path) -> None:
         """Parse mypy settings from pyproject.toml [tool.mypy]."""
         pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text(
-            '[tool.mypy]\nstrict = true\npython_version = "3.11"\n'
-        )
+        pyproject.write_text('[tool.mypy]\nstrict = true\npython_version = "3.11"\n')
 
         analysis = _make_analysis(
             [_make_pattern(PatternCategory.STYLE, "type_hints", "Uses type hints")],

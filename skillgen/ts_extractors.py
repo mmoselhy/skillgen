@@ -29,7 +29,10 @@ if TYPE_CHECKING:
 
 
 def ts_extract_all(
-    root: Node, source: str, lang: Language, file_path: Path,
+    root: Node,
+    source: str,
+    lang: Language,
+    file_path: Path,
 ) -> list[CodePattern]:
     """Run all tree-sitter extractors on a pre-parsed root node.
 
@@ -50,6 +53,7 @@ def ts_extract_all(
 # ---------------------------------------------------------------------------
 # Naming Convention Extraction
 # ---------------------------------------------------------------------------
+
 
 def _extract_func_names_from_tree(root: Node, lang: Language) -> list[str]:
     """Extract function/method names from the AST."""
@@ -286,6 +290,7 @@ def ts_extract_naming(root: Node, lang: Language, file_path: Path) -> list[CodeP
 # Error Handling Extraction
 # ---------------------------------------------------------------------------
 
+
 def ts_extract_error_handling(root: Node, lang: Language, file_path: Path) -> list[CodePattern]:
     """Extract error handling patterns using tree-sitter."""
     patterns: list[CodePattern] = []
@@ -467,8 +472,7 @@ def ts_extract_error_handling(root: Node, lang: Language, file_path: Path) -> li
 
         # .unwrap() calls
         unwrap_calls = [
-            n for n in walk_tree(root, "call_expression")
-            if node_text(n).endswith(".unwrap()")
+            n for n in walk_tree(root, "call_expression") if node_text(n).endswith(".unwrap()")
         ]
         if unwrap_calls:
             patterns.append(
@@ -491,7 +495,10 @@ def ts_extract_error_handling(root: Node, lang: Language, file_path: Path) -> li
             for child in node.children:
                 if child.type == "catch_formal_parameter":
                     for sub in child.children:
-                        if sub.type == "catch_type" or sub.type in ("type_identifier", "scoped_type_identifier"):
+                        if sub.type == "catch_type" or sub.type in (
+                            "type_identifier",
+                            "scoped_type_identifier",
+                        ):
                             catch_types.append(node_text(sub))
         if catch_types:
             patterns.append(
@@ -513,7 +520,10 @@ def ts_extract_error_handling(root: Node, lang: Language, file_path: Path) -> li
 # Testing Pattern Extraction
 # ---------------------------------------------------------------------------
 
-def ts_extract_testing(root: Node, source: str, lang: Language, file_path: Path) -> list[CodePattern]:
+
+def ts_extract_testing(
+    root: Node, source: str, lang: Language, file_path: Path
+) -> list[CodePattern]:
     """Extract testing patterns using tree-sitter.
 
     Takes source text in addition to root node because test-file detection
@@ -549,16 +559,15 @@ def ts_extract_testing(root: Node, source: str, lang: Language, file_path: Path)
     if lang == Language.PYTHON:
         # Count test functions accurately via AST
         test_funcs = [
-            n for n in walk_tree(root, "function_definition")
+            n
+            for n in walk_tree(root, "function_definition")
             if node_text(child_by_field(n, "name")).startswith("test_")
         ]
 
         # Check for pytest decorators
         has_pytest_import = any(
             "pytest" in node_text(n) for n in walk_tree(root, "import_from_statement")
-        ) or any(
-            "pytest" in node_text(n) for n in walk_tree(root, "import_statement")
-        )
+        ) or any("pytest" in node_text(n) for n in walk_tree(root, "import_statement"))
 
         fixture_count = 0
         parametrize_count = 0
@@ -627,8 +636,7 @@ def ts_extract_testing(root: Node, source: str, lang: Language, file_path: Path)
         # Assertion style — check for assert statements vs self.assert* calls
         assert_stmts = walk_tree(root, "assert_statement")
         self_asserts = [
-            n for n in walk_tree(root, "call")
-            if node_text(n).startswith("self.assert")
+            n for n in walk_tree(root, "call") if node_text(n).startswith("self.assert")
         ]
         if assert_stmts and not self_asserts:
             patterns.append(
@@ -703,7 +711,8 @@ def ts_extract_testing(root: Node, source: str, lang: Language, file_path: Path)
     elif lang == Language.GO:
         # Detect test functions: func TestXxx(t *testing.T)
         test_funcs = [
-            n for n in walk_tree(root, "function_declaration")
+            n
+            for n in walk_tree(root, "function_declaration")
             if node_text(child_by_field(n, "name")).startswith("Test")
         ]
         if test_funcs:
@@ -755,7 +764,9 @@ def ts_extract_testing(root: Node, source: str, lang: Language, file_path: Path)
 
     elif lang == Language.RUST:
         # Detect #[test] attributes
-        test_attrs = [n for n in walk_tree(root, "attribute_item") if node_text(n).strip("#[]") == "test"]
+        test_attrs = [
+            n for n in walk_tree(root, "attribute_item") if node_text(n).strip("#[]") == "test"
+        ]
         if test_attrs:
             patterns.append(
                 CodePattern(
@@ -771,7 +782,9 @@ def ts_extract_testing(root: Node, source: str, lang: Language, file_path: Path)
 
         # assert! and assert_eq! macros
         macro_calls = walk_tree(root, "macro_invocation")
-        assert_macros = [n for n in macro_calls if node_text(n).startswith(("assert!", "assert_eq!"))]
+        assert_macros = [
+            n for n in macro_calls if node_text(n).startswith(("assert!", "assert_eq!"))
+        ]
         if assert_macros:
             patterns.append(
                 CodePattern(
@@ -805,6 +818,7 @@ def ts_extract_testing(root: Node, source: str, lang: Language, file_path: Path)
 # ---------------------------------------------------------------------------
 # Import Style Extraction
 # ---------------------------------------------------------------------------
+
 
 def ts_extract_imports(root: Node, lang: Language, file_path: Path) -> list[CodePattern]:
     """Extract import style patterns using tree-sitter."""
@@ -902,8 +916,7 @@ def ts_extract_imports(root: Node, lang: Language, file_path: Path) -> list[Code
         # Named imports
         named_imports = walk_tree(root, "import_statement")
         named_destructured = [
-            n for n in named_imports
-            if any(c.type == "import_clause" for c in n.children)
+            n for n in named_imports if any(c.type == "import_clause" for c in n.children)
         ]
         if named_destructured:
             first = node_text(named_destructured[0])[:80]
@@ -964,6 +977,7 @@ def ts_extract_imports(root: Node, lang: Language, file_path: Path) -> list[Code
 # Documentation Style Extraction
 # ---------------------------------------------------------------------------
 
+
 def ts_extract_documentation(root: Node, lang: Language, file_path: Path) -> list[CodePattern]:
     """Extract documentation patterns using tree-sitter."""
     patterns: list[CodePattern] = []
@@ -984,7 +998,9 @@ def ts_extract_documentation(root: Node, lang: Language, file_path: Path) -> lis
 
         if docstrings:
             # Detect docstring format
-            google_style = sum(1 for d in docstrings if "Args:" in d or "Returns:" in d or "Raises:" in d)
+            google_style = sum(
+                1 for d in docstrings if "Args:" in d or "Returns:" in d or "Raises:" in d
+            )
             numpy_style = sum(1 for d in docstrings if "Parameters\n" in d or "----------" in d)
             sphinx_style = sum(1 for d in docstrings if ":param " in d or ":returns:" in d)
 
@@ -1049,7 +1065,9 @@ def ts_extract_documentation(root: Node, lang: Language, file_path: Path) -> lis
         jsdoc_comments = [c for c in comments if node_text(c).startswith("/**")]
         if jsdoc_comments:
             has_param = any("@param" in node_text(c) for c in jsdoc_comments)
-            has_returns = any("@returns" in node_text(c) or "@return" in node_text(c) for c in jsdoc_comments)
+            has_returns = any(
+                "@returns" in node_text(c) or "@return" in node_text(c) for c in jsdoc_comments
+            )
             desc = "Uses JSDoc comments"
             if has_param:
                 desc += " with @param tags"
@@ -1086,8 +1104,7 @@ def ts_extract_documentation(root: Node, lang: Language, file_path: Path) -> lis
         # Go doc comments (// FuncName ...)
         comments = walk_tree(root, "comment")
         doc_comments = [
-            c for c in comments
-            if node_text(c).startswith("//") and len(node_text(c)) > 3
+            c for c in comments if node_text(c).startswith("//") and len(node_text(c)) > 3
         ]
         # Filter to those that look like Go doc comments (start with uppercase word after //)
         go_docs = [c for c in doc_comments if len(node_text(c)) > 4 and node_text(c)[3:4].isupper()]
@@ -1114,7 +1131,8 @@ def ts_extract_documentation(root: Node, lang: Language, file_path: Path) -> lis
                     category=PatternCategory.DOCUMENTATION,
                     name="rust_doc_comments",
                     description=f"Uses /// doc comments ({len(outer_docs)} outer, {len(inner_docs)} inner)",
-                    evidence=[node_text(c) for c in outer_docs[:2]] + [node_text(c) for c in inner_docs[:1]],
+                    evidence=[node_text(c) for c in outer_docs[:2]]
+                    + [node_text(c) for c in inner_docs[:1]],
                     confidence=Confidence.HIGH,
                     language=lang,
                     file_path=file_path,
@@ -1143,6 +1161,7 @@ def ts_extract_documentation(root: Node, lang: Language, file_path: Path) -> lis
 # ---------------------------------------------------------------------------
 # Code Style Extraction
 # ---------------------------------------------------------------------------
+
 
 def ts_extract_style(root: Node, source: str, lang: Language, file_path: Path) -> list[CodePattern]:
     """Extract code style patterns using tree-sitter.
@@ -1245,7 +1264,9 @@ def ts_extract_style(root: Node, source: str, lang: Language, file_path: Path) -
 
         # Trailing commas (check tuple, list, dict, argument_list, parameter nodes)
         trailing_comma_count = 0
-        for node in walk_tree_multi(root, {"tuple", "list", "dictionary", "argument_list", "parameters"}):
+        for node in walk_tree_multi(
+            root, {"tuple", "list", "dictionary", "argument_list", "parameters"}
+        ):
             children = [c for c in node.children if c.type not in ("(", ")", "[", "]", "{", "}")]
             if children and children[-1].type == ",":
                 trailing_comma_count += 1
@@ -1362,6 +1383,7 @@ def ts_extract_style(root: Node, source: str, lang: Language, file_path: Path) -
 # ---------------------------------------------------------------------------
 # Logging Extraction
 # ---------------------------------------------------------------------------
+
 
 def ts_extract_logging(root: Node, lang: Language, file_path: Path) -> list[CodePattern]:
     """Extract logging patterns using tree-sitter."""

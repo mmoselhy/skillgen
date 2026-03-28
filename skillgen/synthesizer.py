@@ -47,9 +47,7 @@ def synthesize(analysis: AnalysisResult) -> ProjectConventions:
 
         # Filter low-value entries: LOW confidence + <10% prevalence.
         entries = [
-            e
-            for e in entries
-            if not (e.confidence == Confidence.LOW and e.prevalence < 0.1)
+            e for e in entries if not (e.confidence == Confidence.LOW and e.prevalence < 0.1)
         ]
 
         # Sort by prevalence descending.
@@ -120,20 +118,19 @@ def _deduplicate_and_merge(
 
         if name in aggregate_names:
             # Aggregate mode: collapse all variants into a single entry
-            entries.append(
-                _aggregate_pattern_group(name, group, total_files_for_name, total_files)
-            )
+            entries.append(_aggregate_pattern_group(name, group, total_files_for_name, total_files))
         else:
             # Variant mode: keep distinct descriptions, note conflicts between them
-            entries.extend(
-                _variant_pattern_group(name, group, total_files, total_files_analyzed)
-            )
+            entries.extend(_variant_pattern_group(name, group, total_files, total_files_analyzed))
 
     return entries
 
 
 def _aggregate_pattern_group(
-    name: str, group: list[CodePattern], file_count: int, total_files: int,
+    name: str,
+    group: list[CodePattern],
+    file_count: int,
+    total_files: int,
 ) -> ConventionEntry:
     """Collapse all patterns with the same name into one aggregated entry."""
     # Merge evidence
@@ -169,7 +166,10 @@ def _aggregate_pattern_group(
 
 
 def _variant_pattern_group(
-    name: str, group: list[CodePattern], total_files: int, total_files_analyzed: int,
+    name: str,
+    group: list[CodePattern],
+    total_files: int,
+    total_files_analyzed: int,
 ) -> list[ConventionEntry]:
     """Keep distinct description variants, noting conflicts between them."""
     by_desc: dict[str, list[CodePattern]] = defaultdict(list)

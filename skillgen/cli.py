@@ -195,7 +195,9 @@ def main(
         try:
             pick_indices = [int(x.strip()) for x in pick.split(",")]
         except ValueError:
-            _console.print("[red]Error:[/red] --pick must be comma-separated numbers (e.g., --pick 1,3).")
+            _console.print(
+                "[red]Error:[/red] --pick must be comma-separated numbers (e.g., --pick 1,3)."
+            )
             raise typer.Exit(code=1) from None
 
     trust_filter: set[str] | None = None
@@ -251,9 +253,7 @@ def main(
 
             if verbose and not quiet:
                 cat_count = len(conventions.categories)
-                entry_count = sum(
-                    len(s.entries) for s in conventions.categories.values()
-                )
+                entry_count = sum(len(s.entries) for s in conventions.categories.values())
                 cfg_count = len(conventions.config_settings)
                 progress.console.print(
                     f"  [dim]{entry_count} conventions in {cat_count} categories, "
@@ -277,7 +277,9 @@ def main(
 
                 task_enrich = progress.add_task("Searching community skills...", total=1)
                 enrich_result = enrich_search(
-                    conventions, cache_dir=None, no_cache=no_cache,
+                    conventions,
+                    cache_dir=None,
+                    no_cache=no_cache,
                     trust_filter=trust_filter,
                 )
                 progress.update(task_enrich, completed=1)
@@ -294,9 +296,7 @@ def main(
                                 f"Only {max_idx} skills matched (valid range: 1-{max_idx})."
                             )
                             raise typer.Exit(code=1)
-                        selected_entries = [
-                            enrich_result.matched[i - 1] for i in pick_indices
-                        ]
+                        selected_entries = [enrich_result.matched[i - 1] for i in pick_indices]
 
                     task_apply = progress.add_task("Installing community skills...", total=1)
                     enrich_written = enrich_apply(

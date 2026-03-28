@@ -368,7 +368,9 @@ def apply(
     written: list[WrittenFile] = []
 
     for entry in entries:
-        content = _fetch_skill_content(entry.path, cache_dir=cache_dir, no_cache=no_cache, content_url=entry.content_url)
+        content = _fetch_skill_content(
+            entry.path, cache_dir=cache_dir, no_cache=no_cache, content_url=entry.content_url
+        )
         if content is None:
             logger.warning("Failed to download skill: %s", entry.name)
             continue

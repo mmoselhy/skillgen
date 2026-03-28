@@ -38,9 +38,7 @@ SKIP_DIRS: frozenset[str] = frozenset(
 )
 
 # Extension -> language value mapping (derived from Language.extensions to avoid drift).
-EXTENSION_MAP: dict[str, str] = {
-    ext: lang.value for lang in Language for ext in lang.extensions
-}
+EXTENSION_MAP: dict[str, str] = {ext: lang.value for lang in Language for ext in lang.extensions}
 
 # Manifest file -> language value mapping.
 MANIFEST_MAP: dict[str, str | None] = {
@@ -147,7 +145,6 @@ def detect_project(root: Path, verbose: bool = False) -> ProjectInfo:
         config_files=config_files,
         manifest_files=manifest_paths,
     )
-
 
 
 def _scan_directory(

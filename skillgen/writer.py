@@ -85,9 +85,13 @@ def _write_claude_skills(
 ) -> list[WrittenFile]:
     """Write .claude/skills/<name>.md files."""
     return _write_skill_files(
-        generation, target_dir, dry_run,
-        subpath=(".claude", "skills"), suffix=".md",
-        format_name="claude", formatter=_format_claude_skill,
+        generation,
+        target_dir,
+        dry_run,
+        subpath=(".claude", "skills"),
+        suffix=".md",
+        format_name="claude",
+        formatter=_format_claude_skill,
     )
 
 
@@ -96,9 +100,13 @@ def _write_cursor_skills(
 ) -> list[WrittenFile]:
     """Write .cursor/rules/<name>.mdc files."""
     return _write_skill_files(
-        generation, target_dir, dry_run,
-        subpath=(".cursor", "rules"), suffix=".mdc",
-        format_name="cursor", formatter=_format_cursor_skill,
+        generation,
+        target_dir,
+        dry_run,
+        subpath=(".cursor", "rules"),
+        suffix=".mdc",
+        format_name="cursor",
+        formatter=_format_cursor_skill,
     )
 
 

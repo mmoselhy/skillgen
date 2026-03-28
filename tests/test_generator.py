@@ -100,15 +100,17 @@ class TestLocalGenerator:
     """Test the local template engine with ProjectConventions input."""
 
     def test_generates_skills_with_entries(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case"),
-                _make_entry("class_naming", "Classes use PascalCase"),
-            ],
-            PatternCategory.ERROR_HANDLING: [
-                _make_entry("exception_types", "Uses try/except with ValueError, KeyError"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                    _make_entry("class_naming", "Classes use PascalCase"),
+                ],
+                PatternCategory.ERROR_HANDLING: [
+                    _make_entry("exception_types", "Uses try/except with ValueError, KeyError"),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -119,11 +121,13 @@ class TestLocalGenerator:
         assert "error-handling" in skill_names
 
     def test_skips_categories_with_no_entries(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -133,11 +137,13 @@ class TestLocalGenerator:
         assert "logging-and-observability" not in skill_names
 
     def test_generated_content_is_nonempty(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -147,11 +153,13 @@ class TestLocalGenerator:
             assert skill.category.display_name in skill.content
 
     def test_generated_content_has_markdown_structure(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -162,11 +170,13 @@ class TestLocalGenerator:
             assert len(headings) >= 1
 
     def test_stats_are_populated(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -176,11 +186,13 @@ class TestLocalGenerator:
         assert result.stats["skills_generated"] == len(result.skills)
 
     def test_timing_is_recorded(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -188,11 +200,15 @@ class TestLocalGenerator:
         assert result.timing_seconds >= 0.0
 
     def test_glob_patterns_set_for_language(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case", language=Language.PYTHON),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry(
+                        "function_naming", "Functions use snake_case", language=Language.PYTHON
+                    ),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -202,11 +218,13 @@ class TestLocalGenerator:
                 assert any("*.py" in g for g in skill.glob_patterns)
 
     def test_always_apply_for_architecture(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.ARCHITECTURE: [
-                _make_entry("top_level_dirs", "Standard project layout"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.ARCHITECTURE: [
+                    _make_entry("top_level_dirs", "Standard project layout"),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -226,20 +244,24 @@ class TestGenerateSkills:
     """Test the generate_skills factory function."""
 
     def test_local_mode(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                ],
+            }
+        )
         result = generate_skills(conventions, mode=GenerationMode.LOCAL)
         assert len(result.skills) >= 1
 
     def test_default_mode_is_local(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                ],
+            }
+        )
         result = generate_skills(conventions)
         assert len(result.skills) >= 1
 
@@ -248,24 +270,26 @@ class TestSkillContentQuality:
     """Test that generated skill content contains actual stats and evidence."""
 
     def test_naming_skill_contains_stats(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry(
-                    "function_naming",
-                    "Functions use snake_case",
-                    file_count=34,
-                    total_files=39,
-                    evidence=["detect_project", "analyze_project", "generate_skills"],
-                ),
-                _make_entry(
-                    "class_naming",
-                    "Classes use PascalCase",
-                    file_count=12,
-                    total_files=12,
-                    evidence=["ProjectInfo", "CodePattern", "SkillDefinition"],
-                ),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry(
+                        "function_naming",
+                        "Functions use snake_case",
+                        file_count=34,
+                        total_files=39,
+                        evidence=["detect_project", "analyze_project", "generate_skills"],
+                    ),
+                    _make_entry(
+                        "class_naming",
+                        "Classes use PascalCase",
+                        file_count=12,
+                        total_files=12,
+                        evidence=["ProjectInfo", "CodePattern", "SkillDefinition"],
+                    ),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -281,14 +305,16 @@ class TestSkillContentQuality:
         assert "detect_project" in content
 
     def test_no_static_guidelines_in_output(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.ERROR_HANDLING: [
-                _make_entry("exception_types", "Uses try/except with ValueError"),
-            ],
-            PatternCategory.LOGGING: [
-                _make_entry("logging_library", "Uses stdlib logging module"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.ERROR_HANDLING: [
+                    _make_entry("exception_types", "Uses try/except with ValueError"),
+                ],
+                PatternCategory.LOGGING: [
+                    _make_entry("logging_library", "Uses stdlib logging module"),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -332,11 +358,13 @@ class TestSkillContentQuality:
         assert "100" in content
 
     def test_confidence_comment_present(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry("function_naming", "Functions use snake_case"),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)
@@ -345,15 +373,17 @@ class TestSkillContentQuality:
             assert "<!-- Confidence:" in skill.content
 
     def test_evidence_examples_in_output(self) -> None:
-        conventions = _make_conventions({
-            PatternCategory.NAMING: [
-                _make_entry(
-                    "function_naming",
-                    "Functions use snake_case",
-                    evidence=["get_user_by_id", "validate_email"],
-                ),
-            ],
-        })
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry(
+                        "function_naming",
+                        "Functions use snake_case",
+                        evidence=["get_user_by_id", "validate_email"],
+                    ),
+                ],
+            }
+        )
 
         generator = LocalGenerator()
         result = generator.generate(conventions)

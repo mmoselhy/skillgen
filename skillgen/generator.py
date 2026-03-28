@@ -364,8 +364,13 @@ def _render_testing(summary: CategorySummary, conventions: ProjectConventions) -
 
     # Render in preferred order.
     preferred = [
-        "test_framework", "test_file_naming", "assertion_style",
-        "pytest_fixtures", "mocking", "parametrized_tests", "table_driven_tests",
+        "test_framework",
+        "test_file_naming",
+        "assertion_style",
+        "pytest_fixtures",
+        "mocking",
+        "parametrized_tests",
+        "table_driven_tests",
     ]
     rendered: set[str] = set()
     for name in preferred:
@@ -491,8 +496,12 @@ def _render_style(summary: CategorySummary, conventions: ProjectConventions) -> 
 
     # Render style entries in preferred order.
     preferred = [
-        "line_length", "quote_style", "semicolons", "type_hints",
-        "trailing_commas", "variable_declaration",
+        "line_length",
+        "quote_style",
+        "semicolons",
+        "type_hints",
+        "trailing_commas",
+        "variable_declaration",
     ]
     rendered: set[str] = set()
     for name in preferred:
