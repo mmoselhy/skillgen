@@ -114,8 +114,14 @@ def _parse_index(content: str) -> list[IndexEntry]:
                 language=str(item["language"]),
                 framework=item.get("framework"),
                 categories=[str(c) for c in item["categories"]],
-                path=str(item["path"]),
+                path=str(item.get("path", item.get("source_path", ""))),
                 description=str(item.get("description", "")),
+                source_repo=str(item.get("source_repo", "")),
+                content_url=str(item.get("content_url", "")),
+                trust=str(item.get("trust", "contributed")),
+                format=str(item.get("format", "markdown")),
+                tags=[str(t) for t in item.get("tags", [])],
+                updated_at=str(item.get("updated_at", "")),
             )
             entries.append(entry)
         except (KeyError, TypeError):
@@ -179,20 +185,29 @@ def _fetch_index(
 def _match_entries(
     entries: list[IndexEntry],
     conventions: ProjectConventions,
+    trust_filter: set[str] | None = None,
 ) -> tuple[list[IndexEntry], list[str]]:
     """Match index entries against project conventions.
 
     Matching rules:
+    - Trust filter applied first (if provided).
     - Language must match (required).
     - Framework must match if set on the entry.
     - Entries whose categories are ALL already covered locally are skipped.
 
     Returns (matched_entries, skipped_category_names).
     """
+    # Apply trust filter first.
+    if trust_filter:
+        entries = [e for e in entries if e.trust in trust_filter]
+
+    # Also match "any" language entries.
     # Gather project languages (lowercase).
     project_languages: set[str] = set()
     for lang_info in conventions.project_info.languages:
         project_languages.add(lang_info.language.value.lower())
+
+    project_languages.add("any")
 
     # Gather project frameworks (lowercase).
     project_frameworks: set[str] = set()
@@ -231,6 +246,7 @@ def search(
     conventions: ProjectConventions,
     cache_dir: Path | None = None,
     no_cache: bool = False,
+    trust_filter: set[str] | None = None,
 ) -> EnrichmentResult:
     """Fetch the skill index and match entries against project conventions."""
     errors: list[str] = []
@@ -240,7 +256,7 @@ def search(
         errors.append("Could not fetch or parse the skill index.")
         return EnrichmentResult(matched=[], skipped_categories=[], errors=errors)
 
-    matched, skipped = _match_entries(entries, conventions)
+    matched, skipped = _match_entries(entries, conventions, trust_filter=trust_filter)
     return EnrichmentResult(matched=matched, skipped_categories=skipped, errors=errors)
 
 

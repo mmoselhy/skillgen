@@ -469,6 +469,90 @@ class TestSlugify:
         assert _slugify("  --hello--  ") == "hello"
 
 
+class TestParseIndexV2:
+    """Test parsing v2 index format with new fields."""
+
+    def test_parse_v2_with_all_fields(self) -> None:
+        from skillgen.enricher import _parse_index
+
+        content = json.dumps({
+            "version": 2,
+            "updated": "2026-03-28T04:30:00Z",
+            "sources_crawled": ["anthropics/skills"],
+            "skills": [{
+                "id": "anthropic-frontend",
+                "name": "Frontend Design",
+                "language": "any",
+                "framework": None,
+                "categories": ["architecture"],
+                "path": "skills/frontend/SKILL.md",
+                "description": "Frontend design skill",
+                "source_repo": "anthropics/skills",
+                "content_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend/SKILL.md",
+                "trust": "official",
+                "format": "skill-md",
+                "tags": ["frontend"],
+                "updated_at": "2026-03-15",
+            }],
+        })
+        entries = _parse_index(content)
+        assert len(entries) == 1
+        assert entries[0].trust == "official"
+        assert entries[0].source_repo == "anthropics/skills"
+        assert entries[0].content_url.startswith("https://")
+
+    def test_parse_v1_gets_defaults(self) -> None:
+        from skillgen.enricher import _parse_index
+
+        content = json.dumps({"skills": [{
+            "id": "old-skill",
+            "name": "Old Skill",
+            "language": "python",
+            "categories": ["testing"],
+            "path": "old.md",
+            "description": "Legacy",
+        }]})
+        entries = _parse_index(content)
+        assert len(entries) == 1
+        assert entries[0].trust == "contributed"
+        assert entries[0].source_repo == ""
+        assert entries[0].content_url == ""
+
+
+class TestTrustFiltering:
+    """Test trust-based filtering in _match_entries."""
+
+    def test_filter_official_only(self) -> None:
+        entries = [
+            _make_index_entry(id="a", trust="official", framework=None, language="python"),
+            _make_index_entry(id="b", trust="community", framework=None, language="python"),
+            _make_index_entry(id="c", trust="contributed", framework=None, language="python"),
+        ]
+        conventions = _make_conventions(categories=[])
+        matched, _ = _match_entries(entries, conventions, trust_filter={"official"})
+        assert len(matched) == 1
+        assert matched[0].id == "a"
+
+    def test_filter_multiple_tiers(self) -> None:
+        entries = [
+            _make_index_entry(id="a", trust="official", framework=None, language="python"),
+            _make_index_entry(id="b", trust="community", framework=None, language="python"),
+            _make_index_entry(id="c", trust="contributed", framework=None, language="python"),
+        ]
+        conventions = _make_conventions(categories=[])
+        matched, _ = _match_entries(entries, conventions, trust_filter={"official", "community"})
+        assert len(matched) == 2
+
+    def test_no_filter_returns_all(self) -> None:
+        entries = [
+            _make_index_entry(id="a", trust="official", framework=None, language="python"),
+            _make_index_entry(id="b", trust="community", framework=None, language="python"),
+        ]
+        conventions = _make_conventions(categories=[])
+        matched, _ = _match_entries(entries, conventions, trust_filter=None)
+        assert len(matched) == 2
+
+
 class TestIndexEntryV2:
     """Test v2 IndexEntry fields."""
 
