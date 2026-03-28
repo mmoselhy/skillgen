@@ -496,16 +496,19 @@ For each candidate skill (up to 10):
 Print a numbered list:
 
 ```
-Community skills available for Python + FastAPI:
+Community skills available for Python:
 
-  1. [+] fastapi-error-responses — Standardized error response format for FastAPI
-       Fills gap: No error response conventions detected locally.
+  1. [+] Frontend Design — Create distinctive, production-grade frontend interfaces
+       Source: anthropics/skills (official)
+       Fills gap: No frontend conventions detected locally.
 
-  2. [✓] python-logging-structlog — Structured logging with structlog
-       Aligns: Project already uses structlog with similar patterns.
+  2. [✓] Python Pytest Rules — Fixture patterns, parametrize, conftest organization
+       Source: PatrickJS/awesome-cursorrules (community)
+       Aligns: Project already uses pytest with similar fixture patterns.
 
-  3. [!] python-import-style — Absolute imports with isort grouping
-       Conflicts: Project uses relative imports in 60% of files.
+  3. [!] Python Import Style — Absolute imports with isort grouping
+       Source: github/awesome-copilot (official)
+       Conflicts: Project uses 89% absolute imports but different isort config.
 
 Install which? (1,2,3 / all / none):
 ```
@@ -519,8 +522,8 @@ For each skill the user selects:
 2. Write the skill file to `.claude/skills/community/{id}.md` with this header prepended:
 
 ```markdown
-<!-- Source: skillgen/skill-index | Community skill, not derived from your code -->
-<!-- Skill: {id} | Fetched: {YYYY-MM-DD} -->
+<!-- Community skill: {name} (id: {id}) -->
+<!-- Source: {source_repo} | Trust: {trust} -->
 
 {original skill content}
 ```
