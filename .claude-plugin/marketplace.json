@@ -1,0 +1,28 @@
+{
+  "name": "skillgen-marketplace",
+  "owner": {
+    "name": "mmoselhy",
+    "email": "mmoselhy07@gmail.com"
+  },
+  "metadata": {
+    "description": "Skillgen plugin — auto-generate AI agent skill files from your codebase conventions",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "skillgen",
+      "source": "./",
+      "description": "Analyze any codebase and auto-generate AI agent skill files for Claude Code, Cursor, and other AI tools.",
+      "version": "0.3.0",
+      "author": {
+        "name": "mmoselhy"
+      },
+      "homepage": "https://github.com/mmoselhy/skillgen",
+      "repository": "https://github.com/mmoselhy/skillgen",
+      "license": "MIT",
+      "keywords": ["skillgen", "conventions", "code-analysis", "ai-skills"],
+      "category": "development",
+      "tags": ["code-analysis", "conventions", "skill-generation"]
+    }
+  ]
+}

@@ -95,14 +95,14 @@ Deterministic output. Works offline. Runs in CI. Generates all formats at once.
 
 ### Claude Code Plugin
 
-Add skillgen as a skill in any project:
+**Install from the plugin marketplace** (recommended):
 
-```bash
-# From your project root
-git submodule add https://github.com/mmoselhy/skillgen.git .claude/skills/skillgen-repo
+```
+/plugin marketplace add mmoselhy/skillgen
+/plugin install skillgen@skillgen-marketplace
 ```
 
-Or copy the skill files directly:
+**Or copy the skill files manually:**
 
 ```bash
 mkdir -p .claude/skills/skillgen
@@ -112,7 +112,7 @@ curl -sL https://raw.githubusercontent.com/mmoselhy/skillgen/main/.claude/skills
   -o .claude/skills/skillgen/enrich.md
 ```
 
-Then in Claude Code, type:
+Then in Claude Code:
 
 ```
 /skillgen              Analyze codebase, generate .claude/skills/*.md
