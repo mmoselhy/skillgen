@@ -93,11 +93,33 @@ git add .claude/ .cursor/ AGENTS.md && git commit -m "Add AI skill files"
 
 Deterministic output. Works offline. Runs in CI. Generates all formats at once.
 
-### Claude Code Plugin (zero install)
+### Claude Code Plugin
 
-Type `/skillgen` inside any Claude Code session. It reads your code directly and writes `.claude/skills/*.md`.
+Add skillgen as a skill in any project:
 
-If the CLI is also installed, it automatically uses **hybrid mode** — CLI statistics as the backbone + Claude's semantic understanding for richer output.
+```bash
+# From your project root
+git submodule add https://github.com/mmoselhy/skillgen.git .claude/skills/skillgen-repo
+```
+
+Or copy the skill files directly:
+
+```bash
+mkdir -p .claude/skills/skillgen
+curl -sL https://raw.githubusercontent.com/mmoselhy/skillgen/main/.claude/skills/skillgen/SKILL.md \
+  -o .claude/skills/skillgen/SKILL.md
+curl -sL https://raw.githubusercontent.com/mmoselhy/skillgen/main/.claude/skills/skillgen/enrich.md \
+  -o .claude/skills/skillgen/enrich.md
+```
+
+Then in Claude Code, type:
+
+```
+/skillgen              Analyze codebase, generate .claude/skills/*.md
+/skillgen enrich       Find community skills for your stack
+```
+
+If the CLI is also installed (`pip install skillgen-ai`), the plugin automatically uses **hybrid mode** — CLI statistics as the backbone + Claude's semantic understanding for richer output.
 
 | | CLI | `/skillgen` Plugin |
 |---|---|---|
