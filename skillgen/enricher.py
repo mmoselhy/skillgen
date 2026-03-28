@@ -267,6 +267,7 @@ def _fetch_skill_content(
     path: str,
     cache_dir: Path | None = None,
     no_cache: bool = False,
+    content_url: str = "",
 ) -> str | None:
     """Fetch a single skill markdown file from the index repository.
 
@@ -282,7 +283,7 @@ def _fetch_skill_content(
             return cached
 
     # Fetch from network.
-    url = BASE_URL + path
+    url = content_url if content_url else BASE_URL + path
     raw = _fetch_url(url)
     if raw is not None:
         content = raw.decode("utf-8")
@@ -305,9 +306,10 @@ def _slugify(name: str) -> str:
 
 def _format_community_claude(entry: IndexEntry, content: str) -> str:
     """Format a community skill for .claude/skills/community/*.md."""
+    source = entry.source_repo or f"{BASE_URL}{entry.path}"
     lines = [
         f"<!-- Community skill: {entry.name} (id: {entry.id}) -->",
-        f"<!-- Source: {BASE_URL}{entry.path} -->",
+        f"<!-- Source: {source} | Trust: {entry.trust} -->",
         "",
         content,
     ]
@@ -316,6 +318,7 @@ def _format_community_claude(entry: IndexEntry, content: str) -> str:
 
 def _format_community_cursor(entry: IndexEntry, content: str) -> str:
     """Format a community skill for .cursor/rules/community/*.mdc."""
+    source = entry.source_repo or f"{BASE_URL}{entry.path}"
     lines = [
         "---",
         f"description: {entry.description}",
@@ -324,7 +327,7 @@ def _format_community_cursor(entry: IndexEntry, content: str) -> str:
         "---",
         "",
         f"<!-- Community skill: {entry.name} (id: {entry.id}) -->",
-        f"<!-- Source: {BASE_URL}{entry.path} -->",
+        f"<!-- Source: {source} | Trust: {entry.trust} -->",
         "",
         content,
     ]
@@ -360,7 +363,7 @@ def apply(
     written: list[WrittenFile] = []
 
     for entry in entries:
-        content = _fetch_skill_content(entry.path, cache_dir=cache_dir, no_cache=no_cache)
+        content = _fetch_skill_content(entry.path, cache_dir=cache_dir, no_cache=no_cache, content_url=entry.content_url)
         if content is None:
             logger.warning("Failed to download skill: %s", entry.name)
             continue

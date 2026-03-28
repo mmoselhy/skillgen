@@ -581,3 +581,67 @@ class TestIndexEntryV2:
         assert entry.trust == "official"
         assert entry.source_repo == "anthropics/skills"
         assert entry.tags == ["frontend"]
+
+
+class TestV2ContentFetching:
+    """Test content fetching with content_url."""
+
+    @patch("skillgen.enricher.urlopen")
+    def test_uses_content_url_when_available(self, mock_urlopen, tmp_path) -> None:
+        from skillgen.enricher import _fetch_skill_content
+
+        mock_response = _mock_urlopen_response("# Skill content")
+        mock_urlopen.return_value = mock_response
+
+        entry = _make_index_entry(
+            content_url="https://raw.githubusercontent.com/anthropics/skills/main/test.md"
+        )
+        result = _fetch_skill_content(
+            entry.path,
+            content_url=entry.content_url,
+            cache_dir=tmp_path,
+        )
+        assert result == "# Skill content"
+        call_args = mock_urlopen.call_args
+        url_used = call_args[0][0].full_url
+        assert "anthropics/skills" in url_used
+
+    @patch("skillgen.enricher.urlopen")
+    def test_falls_back_to_base_url(self, mock_urlopen, tmp_path) -> None:
+        from skillgen.enricher import _fetch_skill_content
+
+        mock_response = _mock_urlopen_response("# Fallback content")
+        mock_urlopen.return_value = mock_response
+
+        result = _fetch_skill_content(
+            "skills/python/test.md",
+            content_url="",
+            cache_dir=tmp_path,
+        )
+        assert result == "# Fallback content"
+
+
+class TestV2Formatting:
+    """Test updated community skill file formatting."""
+
+    def test_claude_format_includes_trust(self) -> None:
+        from skillgen.enricher import _format_community_claude
+
+        entry = _make_index_entry(
+            source_repo="anthropics/skills",
+            trust="official",
+        )
+        result = _format_community_claude(entry, "# Content")
+        assert "Trust: official" in result
+        assert "anthropics/skills" in result
+
+    def test_cursor_format_includes_trust(self) -> None:
+        from skillgen.enricher import _format_community_cursor
+
+        entry = _make_index_entry(
+            source_repo="PatrickJS/awesome-cursorrules",
+            trust="community",
+        )
+        result = _format_community_cursor(entry, "# Content")
+        assert "Trust: community" in result
+        assert "PatrickJS/awesome-cursorrules" in result
