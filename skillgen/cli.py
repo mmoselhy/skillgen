@@ -144,6 +144,11 @@ def main(
         "--no-cache",
         help="Force re-fetch of online skill index, ignoring cache.",
     ),
+    trust: str | None = typer.Option(
+        None,
+        "--trust",
+        help="Filter by trust tier: official, community, contributed, or all. Default: all.",
+    ),
     version: bool | None = typer.Option(
         None,
         "--version",
@@ -192,6 +197,17 @@ def main(
         except ValueError:
             _console.print("[red]Error:[/red] --pick must be comma-separated numbers (e.g., --pick 1,3).")
             raise typer.Exit(code=1) from None
+
+    trust_filter: set[str] | None = None
+    if trust is not None:
+        valid_tiers = {"official", "community", "contributed", "all"}
+        if trust.lower() not in valid_tiers:
+            _console.print(
+                f"[red]Error:[/red] --trust must be one of: official, community, contributed, all."
+            )
+            raise typer.Exit(code=1)
+        if trust.lower() != "all":
+            trust_filter = {trust.lower()}
 
     try:
         progress = create_progress(quiet=quiet or json_output)
@@ -261,7 +277,8 @@ def main(
 
                 task_enrich = progress.add_task("Searching community skills...", total=1)
                 enrich_result = enrich_search(
-                    conventions, cache_dir=None, no_cache=no_cache
+                    conventions, cache_dir=None, no_cache=no_cache,
+                    trust_filter=trust_filter,
                 )
                 progress.update(task_enrich, completed=1)
 

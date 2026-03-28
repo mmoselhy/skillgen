@@ -201,13 +201,15 @@ def render_enrich_preview(result: EnrichmentResult) -> None:
         header_style="bold magenta",
     )
     table.add_column("#", style="bold", justify="right")
-    table.add_column("Skill", style="cyan", min_width=25)
+    table.add_column("Trust", style="yellow", min_width=10)
+    table.add_column("Skill", style="cyan", min_width=20)
     table.add_column("Categories", style="green")
-    table.add_column("Description", style="dim")
+    table.add_column("Source", style="dim")
 
     for idx, entry in enumerate(result.matched, start=1):
         categories = ", ".join(entry.categories)
-        table.add_row(str(idx), entry.name, categories, entry.description)
+        source = entry.source_repo or "\u2014"
+        table.add_row(str(idx), entry.trust, entry.name, categories, source)
 
     console.print()
     console.print(table)
@@ -219,10 +221,13 @@ def render_enrich_preview(result: EnrichmentResult) -> None:
         )
 
     console.print(
-        "\n[bold]To install:[/bold] skillgen . --enrich --apply"
+        "\n[bold]To install:[/bold]  skillgen . --enrich --apply"
     )
     console.print(
-        "[bold]To pick:[/bold] skillgen . --enrich --apply --pick 1,2"
+        "[bold]To filter:[/bold]   skillgen . --enrich --trust official"
+    )
+    console.print(
+        "[bold]To pick:[/bold]     skillgen . --enrich --apply --pick 1,2"
     )
 
 
