@@ -2,7 +2,7 @@
 
 ## Index URL
 
-`https://raw.githubusercontent.com/skillgen/skill-index/main/index.json`
+`https://raw.githubusercontent.com/mmoselhy/skill-index/main/index.json`
 
 ## Index JSON Schema
 
@@ -28,4 +28,4 @@ Fields: `id` (unique slug, used as filename), `name` (display name), `language` 
 
 ## Skill Content URL
 
-Combine base with `path`: `https://raw.githubusercontent.com/skillgen/skill-index/main/{path}`
+Combine base with `path`: `https://raw.githubusercontent.com/mmoselhy/skill-index/main/{path}`

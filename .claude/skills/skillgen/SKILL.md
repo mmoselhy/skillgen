@@ -461,7 +461,7 @@ If Full Analysis was not already run in this session:
 
 ### Step 2: Fetch the community skill index
 
-Run: `curl -sf https://raw.githubusercontent.com/skillgen/skill-index/main/index.json`
+Run: `curl -sf https://raw.githubusercontent.com/mmoselhy/skill-index/main/index.json`
 
 If the curl fails (non-zero exit or empty output):
 - Print: "Could not reach the community skill index. Check your network connection and try again."
@@ -483,7 +483,7 @@ If no candidates match: print "No community skills found for this project's lang
 ### Step 4: Evaluate each candidate
 
 For each candidate skill (up to 10):
-1. Fetch the skill content: `curl -sf https://raw.githubusercontent.com/skillgen/skill-index/main/{path}`
+1. Fetch the skill content: `curl -sf https://raw.githubusercontent.com/mmoselhy/skill-index/main/{path}`
 2. Read 2–3 local source files relevant to the skill's categories (reuse files from Phase 2 if available, or pick new ones using the same sampling heuristics).
 3. Compare the community skill's recommendations against the local codebase patterns.
 4. Assign one of three evaluations:

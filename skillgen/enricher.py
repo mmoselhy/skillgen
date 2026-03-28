@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 # --- Constants ---
 
-INDEX_URL = "https://raw.githubusercontent.com/skillgen/skill-index/main/index.json"
-BASE_URL = "https://raw.githubusercontent.com/skillgen/skill-index/main/"
+INDEX_URL = "https://raw.githubusercontent.com/mmoselhy/skill-index/main/index.json"
+BASE_URL = "https://raw.githubusercontent.com/mmoselhy/skill-index/main/"
 CACHE_TTL_SECONDS = 86400
 FETCH_TIMEOUT_SECONDS = 10
 
