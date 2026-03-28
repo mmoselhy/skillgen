@@ -291,6 +291,51 @@ class TestMatching:
         assert len(matched) == 0
         assert len(skipped) == 0
 
+    def test_official_trust_bypasses_coverage_filter(self) -> None:
+        """Official skills are shown even when all categories are covered locally."""
+        conventions = _make_conventions(
+            languages=[Language.PYTHON],
+            categories=[PatternCategory.TESTING],
+        )
+        entry = _make_index_entry(
+            framework=None, categories=["testing"], trust="official"
+        )
+
+        matched, skipped = _match_entries([entry], conventions)
+        assert len(matched) == 1
+        assert len(skipped) == 0
+
+    def test_framework_specific_bypasses_coverage_filter(self) -> None:
+        """Framework-specific skills are shown even when categories are covered."""
+        conventions = _make_conventions(
+            languages=[Language.PYTHON],
+            frameworks=["fastapi"],
+            categories=[PatternCategory.TESTING, PatternCategory.ARCHITECTURE],
+        )
+        entry = _make_index_entry(
+            framework="fastapi",
+            categories=["testing", "architecture"],
+            trust="community",
+        )
+
+        matched, skipped = _match_entries([entry], conventions)
+        assert len(matched) == 1
+        assert len(skipped) == 0
+
+    def test_generic_community_still_filtered_by_coverage(self) -> None:
+        """Generic community skills (no framework) are still coverage-filtered."""
+        conventions = _make_conventions(
+            languages=[Language.PYTHON],
+            categories=[PatternCategory.TESTING],
+        )
+        entry = _make_index_entry(
+            framework=None, categories=["testing"], trust="community"
+        )
+
+        matched, skipped = _match_entries([entry], conventions)
+        assert len(matched) == 0
+        assert "Pytest Patterns" in skipped
+
 
 class TestFetchSkillContent:
     """Test individual skill content fetching."""

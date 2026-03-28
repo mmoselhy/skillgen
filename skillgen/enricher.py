@@ -231,11 +231,16 @@ def _match_entries(
         if entry.framework is not None and entry.framework.lower() not in project_frameworks:
             continue
 
-        # Skip entries where ALL categories are already covered locally.
-        entry_categories = {c.lower() for c in entry.categories}
-        if entry_categories and entry_categories.issubset(local_categories):
-            skipped.append(entry.name)
-            continue
+        # Coverage filter: only apply to generic skills.
+        # Official trust skills and framework-specific skills always pass through
+        # because they add value beyond what local generated skills provide.
+        is_official = entry.trust == "official"
+        has_framework = entry.framework is not None
+        if not is_official and not has_framework:
+            entry_categories = {c.lower() for c in entry.categories}
+            if entry_categories and entry_categories.issubset(local_categories):
+                skipped.append(entry.name)
+                continue
 
         matched.append(entry)
 
