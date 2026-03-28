@@ -88,6 +88,12 @@ def _make_index_entry(
     categories: list[str] | None = None,
     path: str = "skills/python/pytest-patterns.md",
     description: str = "Common pytest patterns and best practices",
+    source_repo: str = "",
+    content_url: str = "",
+    trust: str = "contributed",
+    format: str = "markdown",
+    tags: list[str] | None = None,
+    updated_at: str = "",
 ) -> IndexEntry:
     """Build a test IndexEntry."""
     return IndexEntry(
@@ -98,6 +104,12 @@ def _make_index_entry(
         categories=categories or ["testing"],
         path=path,
         description=description,
+        source_repo=source_repo,
+        content_url=content_url,
+        trust=trust,
+        format=format,
+        tags=tags or [],
+        updated_at=updated_at,
     )
 
 
@@ -455,3 +467,33 @@ class TestSlugify:
 
     def test_leading_trailing_stripped(self) -> None:
         assert _slugify("  --hello--  ") == "hello"
+
+
+class TestIndexEntryV2:
+    """Test v2 IndexEntry fields."""
+
+    def test_v2_fields_have_defaults(self) -> None:
+        """v2 fields are optional with sensible defaults."""
+        entry = IndexEntry(
+            id="test", name="Test", language="python", framework=None,
+            categories=["testing"], path="test.md", description="Test",
+        )
+        assert entry.source_repo == ""
+        assert entry.content_url == ""
+        assert entry.trust == "contributed"
+        assert entry.format == "markdown"
+        assert entry.tags == []
+        assert entry.updated_at == ""
+
+    def test_v2_fields_set_explicitly(self) -> None:
+        entry = _make_index_entry(
+            source_repo="anthropics/skills",
+            content_url="https://raw.githubusercontent.com/anthropics/skills/main/test.md",
+            trust="official",
+            format="skill-md",
+            tags=["frontend"],
+            updated_at="2026-03-15",
+        )
+        assert entry.trust == "official"
+        assert entry.source_repo == "anthropics/skills"
+        assert entry.tags == ["frontend"]

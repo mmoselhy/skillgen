@@ -295,6 +295,13 @@ class IndexEntry:
     categories: list[str]
     path: str
     description: str
+    # v2 fields (optional, with backward-compatible defaults)
+    source_repo: str = ""
+    content_url: str = ""
+    trust: str = "contributed"
+    format: str = "markdown"
+    tags: list[str] = field(default_factory=list)
+    updated_at: str = ""
 
 
 @dataclass
