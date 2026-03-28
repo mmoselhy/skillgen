@@ -1,6 +1,6 @@
 {
   "name": "skillgen",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Analyze any codebase and auto-generate AI agent skill files. Extracts naming, error handling, testing, imports, documentation, architecture, style, and logging conventions.",
   "author": {
     "name": "mmoselhy",
@@ -9,6 +9,5 @@
   "homepage": "https://github.com/mmoselhy/skillgen",
   "repository": "https://github.com/mmoselhy/skillgen",
   "license": "MIT",
-  "keywords": ["skillgen", "conventions", "code-analysis", "ai-skills", "claude-code"],
-  "skills": "./skills/"
+  "keywords": ["skillgen", "conventions", "code-analysis", "ai-skills", "claude-code"]
 }
