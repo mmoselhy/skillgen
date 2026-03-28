@@ -30,3 +30,8 @@ Thumbs.db
 htmlcov/
 .coverage
 coverage.xml
+
+# Local/generated — not part of the project source
+.claude/settings.local.json
+.claude/skills/*.md
+skill-index/
