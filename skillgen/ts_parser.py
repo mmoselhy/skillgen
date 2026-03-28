@@ -113,7 +113,7 @@ def parse_source(source: str, lang: Language, file_path: Path | None = None) -> 
 
     try:
         tree = parser.parse(source.encode("utf-8"))
-        return tree.root_node  # type: ignore[no-any-return]
+        return tree.root_node
     except Exception:
         logger.debug("tree-sitter parse failed for %s", file_path or "(unknown)")
         return None
