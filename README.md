@@ -50,7 +50,7 @@ Done! 17 file(s) would be generated.
 ### 1. CLI Tool (teams, CI, multi-format)
 
 ```bash
-pip install skillgen
+pip install skillgen-ai
 skillgen ./my-project
 ```
 
@@ -74,14 +74,14 @@ Claude reads your code directly and generates skill files using its own understa
 ## Installation
 
 ```bash
-pip install skillgen
+pip install skillgen-ai
 ```
 
 Optional extras:
 
 ```bash
-pip install skillgen[tree-sitter]  # AST-based analysis (more accurate)
-pip install skillgen[llm]          # LLM-enhanced output (requires API key)
+pip install skillgen-ai[tree-sitter]  # AST-based analysis (more accurate)
+pip install skillgen-ai[llm]          # LLM-enhanced output (requires API key)
 ```
 
 ## Quick Start
@@ -317,7 +317,7 @@ skillgen reads your actual tool configs and embeds settings in generated skills:
 ## Tree-sitter (Optional)
 
 ```bash
-pip install skillgen[tree-sitter]
+pip install skillgen-ai[tree-sitter]
 ```
 
 Installs AST grammars for all 7 languages. When available, skillgen automatically uses AST-based extraction:
@@ -344,7 +344,7 @@ Exports all conventions with prevalence stats, config values, evidence, and conf
 ANTHROPIC_API_KEY=sk-ant-... skillgen ./my-project --llm
 ```
 
-Sends skill drafts to Claude or GPT-4o for enhancement. Falls back to local generation on failure. Optional: `pip install skillgen[llm]`.
+Sends skill drafts to Claude or GPT-4o for enhancement. Falls back to local generation on failure. Optional: `pip install skillgen-ai[llm]`.
 
 ## Contributing
 

@@ -19,7 +19,7 @@ allowed-tools:
 
 # /skillgen — Codebase Convention Analyzer
 
-> **Context budget:** If the `skillgen` CLI is installed (`pip install skillgen`), this skill uses hybrid mode — CLI stats + 5-8 files (~1,700 lines of context). Without the CLI, standalone mode reads 15-20 files (~10,000 lines). Either way, run at session start or in a dedicated session.
+> **Context budget:** If the `skillgen` CLI is installed (`pip install skillgen-ai`), this skill uses hybrid mode — CLI stats + 5-8 files (~1,700 lines of context). Without the CLI, standalone mode reads 15-20 files (~10,000 lines). Either way, run at session start or in a dedicated session.
 
 ## Command Router
 
@@ -65,7 +65,7 @@ skillgen --version
 **If the command fails (not found, error):**
 
 1. Print: `skillgen CLI not installed. Using standalone mode (reads more files, uses more context).`
-2. Print: `Tip: pip install skillgen for faster, more accurate analysis.`
+2. Print: `Tip: pip install skillgen-ai for faster, more accurate analysis.`
 3. Proceed to **Phase 1** (standalone detection below).
 
 ---
@@ -439,7 +439,7 @@ Skipped: [list categories skipped]
 These conventions are now active for this and all future sessions.
 To share with your team: git add .claude/skills/ && git commit -m "Add AI skill files"
 
-Tip: pip install skillgen for faster, more accurate analysis (hybrid mode).
+Tip: pip install skillgen-ai for faster, more accurate analysis (hybrid mode).
 ```
 
 Only list files that were actually written. Adjust counts accordingly.

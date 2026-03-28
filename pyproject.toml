@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "skillgen"
-version = "0.1.0"
+name = "skillgen-ai"
+version = "0.3.0"
 description = "Analyze any codebase and auto-generate AI agent skill files for Claude Code, Cursor, and other AI tools"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    { name = "skillgen contributors", email = "skillgen@example.com" },
+    { name = "mmoselhy", email = "mmoselhy07@gmail.com" },
 ]
 keywords = ["skillgen", "ai-agents", "claude-code", "cursor", "llm-tools", "developer-tools", "code-analysis"]
 classifiers = [
@@ -30,10 +30,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/skillgen/skillgen"
-Repository = "https://github.com/skillgen/skillgen"
-Issues = "https://github.com/skillgen/skillgen/issues"
-Documentation = "https://github.com/skillgen/skillgen#readme"
+Homepage = "https://github.com/mmoselhy/skillgen"
+Repository = "https://github.com/mmoselhy/skillgen"
+Issues = "https://github.com/mmoselhy/skillgen/issues"
+Documentation = "https://github.com/mmoselhy/skillgen#readme"
 
 [project.optional-dependencies]
 llm = [
@@ -59,6 +59,9 @@ dev = [
 
 [project.scripts]
 skillgen = "skillgen.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["skillgen"]
 
 [tool.ruff]
 target-version = "py311"
