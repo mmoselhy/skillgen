@@ -10,5 +10,5 @@
   "repository": "https://github.com/mmoselhy/skillgen",
   "license": "MIT",
   "keywords": ["skillgen", "conventions", "code-analysis", "ai-skills", "claude-code"],
-  "skills": "./.claude/skills/"
+  "skills": "./skills/"
 }

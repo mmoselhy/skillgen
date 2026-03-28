@@ -36,8 +36,8 @@ Every time an AI assistant touches your code, it guesses at your conventions. Wr
 That's it. Now you have two slash commands in every project:
 
 ```
-/skillgen              Analyze codebase, generate .claude/skills/*.md
-/skillgen enrich       Find community skills for your stack
+/skillgen:skillgen              Analyze codebase, generate .claude/skills/*.md
+/skillgen:skillgen enrich       Find community skills for your stack
 ```
 
 > **No Python or pip required.** The plugin runs entirely inside Claude Code — Claude reads your code and generates skill files directly. For even better results, also install the CLI (`pip install skillgen-ai`) to enable **hybrid mode** (CLI stats + Claude semantics).
