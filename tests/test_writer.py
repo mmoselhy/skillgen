@@ -52,7 +52,9 @@ class TestCombinedClaudeSkill:
         generation = _make_generation(PatternCategory.NAMING)
         written = write_skills(generation, tmp_path, OutputFormat.CLAUDE)
         assert len(written) == 1
-        assert written[0].path == tmp_path / ".claude" / "skills" / "project-conventions" / "SKILL.md"
+        assert (
+            written[0].path == tmp_path / ".claude" / "skills" / "project-conventions" / "SKILL.md"
+        )
 
     def test_frontmatter_has_required_fields(self) -> None:
         generation = _make_generation(PatternCategory.NAMING, PatternCategory.STYLE)
