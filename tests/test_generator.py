@@ -150,7 +150,7 @@ class TestLocalGenerator:
 
         for skill in result.skills:
             assert len(skill.content) > 0
-            assert skill.category.display_name in skill.content
+            assert "<!-- Confidence:" in skill.content
 
     def test_generated_content_has_markdown_structure(self) -> None:
         conventions = _make_conventions(
@@ -166,7 +166,7 @@ class TestLocalGenerator:
 
         for skill in result.skills:
             lines = skill.content.split("\n")
-            headings = [ln for ln in lines if ln.startswith("#")]
+            headings = [ln for ln in lines if ln.startswith("###")]
             assert len(headings) >= 1
 
     def test_stats_are_populated(self) -> None:
@@ -527,3 +527,77 @@ def test_validation_error():
         for skill in result.skills:
             assert len(skill.content.strip()) > 50
             assert "#" in skill.content
+
+
+class TestHeadingFormat:
+    """Test that rendered content has no # title and uses ### subsections."""
+
+    def test_naming_content_has_no_h1(self) -> None:
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                    _make_entry("class_naming", "Classes use PascalCase"),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        naming = next(s for s in result.skills if s.name == "naming-conventions")
+        lines = naming.content.split("\n")
+        h1_lines = [ln for ln in lines if ln.startswith("# ")]
+        assert len(h1_lines) == 0, f"Content should not have # headings: {h1_lines}"
+
+    def test_naming_subsections_use_h3(self) -> None:
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                    _make_entry("class_naming", "Classes use PascalCase"),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        naming = next(s for s in result.skills if s.name == "naming-conventions")
+        lines = naming.content.split("\n")
+        subsection_lines = [ln for ln in lines if ln.startswith("## ") or ln.startswith("### ")]
+        for ln in subsection_lines:
+            assert ln.startswith("### "), f"Subsection should use ###: {ln}"
+
+    def test_all_renderers_produce_no_h1(self) -> None:
+        """Every category renderer should produce content without # headings."""
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry("function_naming", "Functions use snake_case"),
+                ],
+                PatternCategory.ERROR_HANDLING: [
+                    _make_entry("exception_types", "Uses try/except with ValueError"),
+                ],
+                PatternCategory.TESTING: [
+                    _make_entry("test_framework", "Uses pytest"),
+                ],
+                PatternCategory.IMPORTS: [
+                    _make_entry("import_style", "Uses absolute imports"),
+                ],
+                PatternCategory.DOCUMENTATION: [
+                    _make_entry("module_docstring", "Module docstrings present"),
+                ],
+                PatternCategory.ARCHITECTURE: [
+                    _make_entry("top_level_dirs", "Standard layout"),
+                ],
+                PatternCategory.STYLE: [
+                    _make_entry("line_length", "Max 100 chars"),
+                ],
+                PatternCategory.LOGGING: [
+                    _make_entry("logging_library", "Uses stdlib logging"),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        for skill in result.skills:
+            lines = skill.content.split("\n")
+            h1_lines = [ln for ln in lines if ln.startswith("# ")]
+            assert len(h1_lines) == 0, f"{skill.name} has # headings: {h1_lines}"

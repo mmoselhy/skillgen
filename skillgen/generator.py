@@ -286,7 +286,6 @@ def _render_naming(summary: CategorySummary, conventions: ProjectConventions) ->
     """Render naming conventions skill with evidence-only content."""
     langs = ", ".join(conventions.project_info.language_names)
     lines: list[str] = [
-        f"# {summary.category.display_name}",
         _confidence_comment(summary),
         "",
         f"Naming conventions observed in this {langs} project.",
@@ -297,13 +296,13 @@ def _render_naming(summary: CategorySummary, conventions: ProjectConventions) ->
     by_name = _group_entries_by_name(summary.entries)
 
     if "function_naming" in by_name:
-        lines.append("## Function Naming")
+        lines.append("### Function Naming")
         for entry in by_name["function_naming"]:
             lines.extend(_render_entry(entry))
         lines.append("")
 
     if "class_naming" in by_name:
-        lines.append("## Class Naming")
+        lines.append("### Class Naming")
         for entry in by_name["class_naming"]:
             lines.extend(_render_entry(entry))
         lines.append("")
@@ -313,13 +312,13 @@ def _render_naming(summary: CategorySummary, conventions: ProjectConventions) ->
         if name in ("function_naming", "class_naming"):
             continue
         heading = name.replace("_", " ").title()
-        lines.append(f"## {heading}")
+        lines.append(f"### {heading}")
         for entry in entries:
             lines.extend(_render_entry(entry))
         lines.append("")
 
     if summary.config_values:
-        lines.append("## Tool Configuration")
+        lines.append("### Tool Configuration")
         lines.extend(_render_config_values(summary.config_values))
         lines.append("")
 
@@ -330,7 +329,6 @@ def _render_error_handling(summary: CategorySummary, conventions: ProjectConvent
     """Render error handling skill."""
     langs = ", ".join(conventions.project_info.language_names)
     lines: list[str] = [
-        f"# {summary.category.display_name}",
         _confidence_comment(summary),
         "",
         f"Error handling patterns observed in this {langs} project.",
@@ -341,7 +339,7 @@ def _render_error_handling(summary: CategorySummary, conventions: ProjectConvent
 
     for name, entries in by_name.items():
         heading = name.replace("_", " ").title()
-        lines.append(f"## {heading}")
+        lines.append(f"### {heading}")
         for entry in entries:
             lines.extend(_render_entry(entry))
         lines.append("")
@@ -353,7 +351,6 @@ def _render_testing(summary: CategorySummary, conventions: ProjectConventions) -
     """Render testing conventions skill."""
     langs = ", ".join(conventions.project_info.language_names)
     lines: list[str] = [
-        f"# {summary.category.display_name}",
         _confidence_comment(summary),
         "",
         f"Testing conventions observed in this {langs} project.",
@@ -376,7 +373,7 @@ def _render_testing(summary: CategorySummary, conventions: ProjectConventions) -
     for name in preferred:
         if name in by_name:
             heading = name.replace("_", " ").title()
-            lines.append(f"## {heading}")
+            lines.append(f"### {heading}")
             for entry in by_name[name]:
                 lines.extend(_render_entry(entry))
             lines.append("")
@@ -386,7 +383,7 @@ def _render_testing(summary: CategorySummary, conventions: ProjectConventions) -
         if name in rendered:
             continue
         heading = name.replace("_", " ").title()
-        lines.append(f"## {heading}")
+        lines.append(f"### {heading}")
         for entry in entries:
             lines.extend(_render_entry(entry))
         lines.append("")
@@ -398,7 +395,6 @@ def _render_imports(summary: CategorySummary, conventions: ProjectConventions) -
     """Render import conventions skill."""
     langs = ", ".join(conventions.project_info.language_names)
     lines: list[str] = [
-        f"# {summary.category.display_name}",
         _confidence_comment(summary),
         "",
         f"Import and dependency patterns observed in this {langs} project.",
@@ -408,13 +404,13 @@ def _render_imports(summary: CategorySummary, conventions: ProjectConventions) -
     by_name = _group_entries_by_name(summary.entries)
     for name, entries in by_name.items():
         heading = name.replace("_", " ").title()
-        lines.append(f"## {heading}")
+        lines.append(f"### {heading}")
         for entry in entries:
             lines.extend(_render_entry(entry))
         lines.append("")
 
     if summary.config_values:
-        lines.append("## Tool Configuration")
+        lines.append("### Tool Configuration")
         lines.extend(_render_config_values(summary.config_values))
         lines.append("")
 
@@ -425,7 +421,6 @@ def _render_documentation(summary: CategorySummary, conventions: ProjectConventi
     """Render documentation conventions skill."""
     langs = ", ".join(conventions.project_info.language_names)
     lines: list[str] = [
-        f"# {summary.category.display_name}",
         _confidence_comment(summary),
         "",
         f"Documentation patterns observed in this {langs} project.",
@@ -435,7 +430,7 @@ def _render_documentation(summary: CategorySummary, conventions: ProjectConventi
     by_name = _group_entries_by_name(summary.entries)
     for name, entries in by_name.items():
         heading = name.replace("_", " ").title()
-        lines.append(f"## {heading}")
+        lines.append(f"### {heading}")
         for entry in entries:
             lines.extend(_render_entry(entry))
         lines.append("")
@@ -447,7 +442,6 @@ def _render_architecture(summary: CategorySummary, conventions: ProjectConventio
     """Render architecture skill."""
     langs = ", ".join(conventions.project_info.language_names)
     lines: list[str] = [
-        f"# {summary.category.display_name}",
         _confidence_comment(summary),
         "",
         f"Architecture patterns observed in this {langs} project.",
@@ -457,7 +451,7 @@ def _render_architecture(summary: CategorySummary, conventions: ProjectConventio
     by_name = _group_entries_by_name(summary.entries)
 
     if "top_level_dirs" in by_name:
-        lines.append("## Project Structure")
+        lines.append("### Project Structure")
         for entry in by_name["top_level_dirs"]:
             lines.append(f"- {entry.description}")
             if entry.evidence:
@@ -473,7 +467,7 @@ def _render_architecture(summary: CategorySummary, conventions: ProjectConventio
         if name == "top_level_dirs":
             continue
         heading = name.replace("_", " ").title()
-        lines.append(f"## {heading}")
+        lines.append(f"### {heading}")
         for entry in entries:
             lines.extend(_render_entry(entry))
         lines.append("")
@@ -485,7 +479,6 @@ def _render_style(summary: CategorySummary, conventions: ProjectConventions) -> 
     """Render code style skill with config values."""
     langs = ", ".join(conventions.project_info.language_names)
     lines: list[str] = [
-        f"# {summary.category.display_name}",
         _confidence_comment(summary),
         "",
         f"Code style conventions observed in this {langs} project.",
@@ -507,7 +500,7 @@ def _render_style(summary: CategorySummary, conventions: ProjectConventions) -> 
     for name in preferred:
         if name in by_name:
             heading = name.replace("_", " ").title()
-            lines.append(f"## {heading}")
+            lines.append(f"### {heading}")
             for entry in by_name[name]:
                 lines.extend(_render_entry(entry))
             # Inject relevant config value if present.
@@ -519,7 +512,7 @@ def _render_style(summary: CategorySummary, conventions: ProjectConventions) -> 
         if name in rendered:
             continue
         heading = name.replace("_", " ").title()
-        lines.append(f"## {heading}")
+        lines.append(f"### {heading}")
         for entry in entries:
             lines.extend(_render_entry(entry))
         lines.append("")
@@ -527,7 +520,7 @@ def _render_style(summary: CategorySummary, conventions: ProjectConventions) -> 
     # Formatters and linters from config.
     config = summary.config_values
     if config:
-        lines.append("## Formatters & Linters")
+        lines.append("### Formatters & Linters")
         # Ruff
         if any(k.startswith("ruff.") for k in config):
             ruff_details: list[str] = []
@@ -591,7 +584,6 @@ def _render_logging(summary: CategorySummary, conventions: ProjectConventions) -
     """Render logging and observability skill."""
     langs = ", ".join(conventions.project_info.language_names)
     lines: list[str] = [
-        f"# {summary.category.display_name}",
         _confidence_comment(summary),
         "",
         f"Logging and observability patterns observed in this {langs} project.",
@@ -601,7 +593,7 @@ def _render_logging(summary: CategorySummary, conventions: ProjectConventions) -
     by_name = _group_entries_by_name(summary.entries)
     for name, entries in by_name.items():
         heading = name.replace("_", " ").title()
-        lines.append(f"## {heading}")
+        lines.append(f"### {heading}")
         for entry in entries:
             lines.extend(_render_entry(entry))
         lines.append("")
@@ -613,7 +605,6 @@ def _render_generic(summary: CategorySummary, conventions: ProjectConventions) -
     """Generic renderer for categories without a specific renderer."""
     langs = ", ".join(conventions.project_info.language_names)
     lines: list[str] = [
-        f"# {summary.category.display_name}",
         _confidence_comment(summary),
         "",
         f"{summary.category.description} Observed in this {langs} project.",
@@ -623,7 +614,7 @@ def _render_generic(summary: CategorySummary, conventions: ProjectConventions) -
     by_name = _group_entries_by_name(summary.entries)
     for name, entries in by_name.items():
         heading = name.replace("_", " ").title()
-        lines.append(f"## {heading}")
+        lines.append(f"### {heading}")
         for entry in entries:
             lines.extend(_render_entry(entry))
         lines.append("")
