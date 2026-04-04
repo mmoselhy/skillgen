@@ -227,29 +227,43 @@ You have TWO data sources for each category:
 
 **Combination rules:**
 
-1. **Quantitative claims MUST come from CLI data:**
-   Write: "**82% use snake_case** (14/17 files)"
-   NOT: "most functions use snake_case" (vague)
+1. **State conventions as imperative rules, not statistics:**
+   Write: "**Use snake_case for all function names**"
+   NOT: "82% use snake_case (14/17 files)" (LLMs follow instructions, not stats)
 
-2. **Semantic insight comes from your reading:**
+2. **Derive anti-patterns from minority conventions:**
+   If the CLI shows a dominant pattern (>80%), emit a "Do NOT" rule for the minority:
+   Write: "Do NOT use camelCase for function names"
+   NOT: "Note: 13% use camelCase" (mentioning the anti-pattern increases LLM usage of it)
+
+3. **Semantic insight comes from your reading:**
    Write: "specifically the **verb_noun** pattern: `get_user`, `create_order`, `validate_input`"
    NOT: just listing the CLI's evidence strings verbatim
 
-3. **Config values come from CLI data verbatim:**
+4. **Config values come from CLI data verbatim:**
    Write: "**Configured in ruff:** line-length = 100, select = E, F, W, I, N, UP, B, SIM, RUF"
    (Found in the JSON's `config_settings` dict)
 
-4. **Architectural guidance comes from your reading:**
+5. **Architectural guidance comes from your reading:**
    Write: "New API endpoints go in `app/routers/` following the existing `APIRouter` pattern"
    (The CLI can't infer this — only you can, from reading the code)
 
-5. **Conflicts — explain with context:**
-   If the CLI JSON shows a `conflict` field, explain it using what you observed:
-   Write: "82% snake_case, but `legacy/old_api.py` uses camelCase (appears to be pre-refactor code)"
+6. **Include one code snippet per category** showing the canonical pattern:
+   ```python
+   def get_user(user_id: int) -> User:
+       """Fetch a user by ID."""
+       ...
+   ```
+   Construct from evidence — use real function/class names from the codebase.
 
-6. **Don't just reformat the JSON.** Add genuine semantic value from your reading. If you can't add anything beyond what the CLI says for a category, use the CLI data as-is — don't pad with generic advice.
+7. **Don't just reformat the JSON.** Add genuine semantic value from your reading. If you can't add anything beyond what the CLI says for a category, use the CLI data as-is — don't pad with generic advice.
 
-7. **Process ALL 8 categories.** Walk through: naming, error handling, testing, imports, documentation, architecture, code style, logging. For each, combine CLI stats + your insight. Also note any patterns your reading revealed that the CLI missed (e.g., decorator conventions, DI patterns).
+8. **Process ALL 8 categories.** Walk through: naming, error handling, testing, imports, documentation, architecture, code style, logging. For each, combine CLI data + your insight. Also note any patterns your reading revealed that the CLI missed (e.g., decorator conventions, DI patterns).
+
+9. **Classify each convention by tier:**
+   - **ALWAYS**: High confidence + >80% prevalence — these become firm rules
+   - **PREFERRED**: Medium confidence or 60-80% prevalence — these are recommendations
+   - **NEVER**: Anti-patterns derived from minority conventions — these are prohibitions
 
 After extraction, proceed to **Phase 4** (same for both modes).
 
@@ -263,13 +277,15 @@ After extraction, proceed to **Phase 4** (same for both modes).
 
 #### Critical rules for every bullet you write:
 
-1. **Every bullet MUST reference actual code** from files you read in Phase 2. Cite the file name.
-2. **No generic advice.** If you looked for a pattern and did not find it, write: "No clear convention detected" and move to the next sub-category.
-3. **Bold the key pattern:** e.g., "Functions follow **verb_noun** naming: `get_user`, `create_order`, `validate_input`"
+1. **State every convention as an imperative rule.** Write "**Use snake_case for all functions**" not "Functions use snake_case".
+2. **Every bullet MUST reference actual code** from files you read in Phase 2. Cite the file name.
+3. **No generic advice.** If you looked for a pattern and did not find it, write: "No clear convention detected" and move to the next sub-category.
 4. **Include 3+ real examples** from the codebase for each convention.
-5. **Note conflicts honestly:** e.g., "80% of files use **snake_case** imports, but `legacyModule.js` uses camelCase"
-6. **Include config-derived values:** e.g., "Line length set to **88** in `pyproject.toml` `[tool.ruff]`"
-7. If an entire category has no detectable conventions, skip it entirely in the output.
+5. **Derive "Do NOT" rules** from minority patterns. If most files use one style, explicitly prohibit the minority: "Do NOT use camelCase for function names".
+6. **Include one code snippet per category** — a 3-5 line example showing the correct pattern using real names from the codebase.
+7. **Include config-derived values:** e.g., "Line length set to **88** in `pyproject.toml` `[tool.ruff]`"
+8. **Classify each convention as ALWAYS, PREFERRED, or NEVER** based on how strongly it's observed.
+9. If an entire category has no detectable conventions, skip it entirely in the output.
 
 ---
 
@@ -345,81 +361,118 @@ Extract and document each of these if a pattern exists:
 
 ---
 
-### Phase 4: Write Skill Files
+### Phase 4: Write Skill File
 
-**Goal:** Persist the extracted conventions as `.claude/skills/*.md` files.
+**Goal:** Persist the extracted conventions as a single combined `.claude/skills/project-conventions/SKILL.md` file with ALWAYS/PREFERRED/NEVER tiers.
 
-#### 4a. Check for existing files
+#### 4a. Check for existing file
 
-Glob `.claude/skills/*.md`. For each file found:
+Check if `.claude/skills/project-conventions/SKILL.md` exists:
 - Read the first 3 lines.
-- If the file contains `<!-- Generated by skillgen` in those lines, it was previously generated and is **safe to overwrite**.
-- If the file does NOT contain that marker, it is **hand-written**. Do NOT overwrite it. Add it to the skip list.
+- If it contains `<!-- Generated by skillgen` it was previously generated and is **safe to overwrite**.
+- If it does NOT contain that marker, it is **hand-written**. Do NOT overwrite it. Print a warning and stop.
+
+Also clean up old format: glob `.claude/skills/*.md` (flat files from v0.3.x). If any contain `<!-- Generated by skillgen`, delete them — they are superseded by the combined file.
 
 #### 4b. Create the output directory
 
-Run `mkdir -p .claude/skills/` if it does not already exist.
+Run `mkdir -p .claude/skills/project-conventions/` if it does not already exist.
 
-#### 4c. Write each category file
+#### 4c. Write the combined SKILL.md
 
-For each of the 8 categories where conventions were detected, write a file using this exact mapping:
-
-| Category | File name |
-|---|---|
-| Naming Conventions | `naming-conventions.md` |
-| Error Handling | `error-handling.md` |
-| Testing | `testing.md` |
-| Imports & Dependencies | `imports-and-dependencies.md` |
-| Documentation | `documentation.md` |
-| Architecture | `architecture.md` |
-| Code Style | `code-style.md` |
-| Logging & Observability | `logging-and-observability.md` |
-
-Each file MUST follow this format exactly:
+Write a **single file** at `.claude/skills/project-conventions/SKILL.md` using this exact format:
 
 ```markdown
-<!-- Generated by skillgen | Do not edit — re-run /skillgen to update -->
+<!-- Generated by skillgen v0.4.0. Regenerate with: skillgen . -->
 
-# [Category Name]
+---
+name: project-conventions
+description: Apply this project's coding conventions when writing or modifying source code. Covers naming, error handling, testing, imports, documentation, architecture, code style, and logging patterns.
+user-invocable: false
+paths: "*.py, *.pyi"
+---
 
-## [Subcategory Name]
-- **[Pattern name]**: `example1`, `example2`, `example3`
-- **[Another pattern]**: Description with `inline_code` references
+# Project Conventions
 
-## [Another Subcategory]
-- **[Pattern]**: Evidence from `filename.py` — description
+## ALWAYS
+- **Use snake_case for all function names**
+- **Use PascalCase for all class names**
+- **Use absolute imports**
+- **Handle errors with specific exception types**
+
+## NEVER
+- Do NOT use camelCase for function names
+- Do NOT use bare `except:` clauses
+- Do NOT use `print()` for logging
+
+## PREFERRED
+- Use dataclasses for value types
+- Prefer `pathlib.Path` over `os.path`
+
+## Category Details
+
+### Naming Conventions
+
+- **Use snake_case for all function names**
+  - Examples: `get_user`, `create_order`, `validate_input`
+
+#### Example
+\```python
+class UserService:
+    """Service for user operations."""
+
+def get_user(user_id: int) -> User:
+    """Fetch a user by ID."""
+    ...
+\```
+
+### Error Handling
+
+- **Use try/except with specific exception types**
+  - Examples: `ValueError`, `KeyError`, `OSError`
+
+#### Example
+\```python
+try:
+    result = process(data)
+except ValueError as exc:
+    logger.error("Processing failed", exc_info=exc)
+    raise
+\```
+
+### [Additional categories...]
 ```
 
-Rules for file content:
-- First line is always the HTML comment marker. No blank line before it.
-- Use `#` for the category title, `##` for subcategories, `-` for bullet points.
-- Bold the pattern name in each bullet.
-- Include inline code for all code references (function names, file names, config values).
-- Do not include generic advice. Every line must be grounded in the analysis.
-- If a subcategory had no conventions detected, omit that subcategory entirely.
-- If an entire category had no conventions detected, do not create the file.
-
-#### 4d. Skip hand-written files
-
-If a file in the skip list would have been written, print: "Skipped [filename] — hand-written file detected (no skillgen marker). Delete the file or add the marker to allow overwriting."
+**Rules for the combined file:**
+- First line is the HTML comment marker with version and regeneration hint.
+- YAML frontmatter with `name: project-conventions`, `user-invocable: false`, `paths` derived from detected languages.
+- `# Project Conventions` as the single h1 heading.
+- `## ALWAYS` / `## NEVER` / `## PREFERRED` tier summary at the top — extract the strongest rules from all categories.
+  - ALWAYS: conventions you are very confident about (strong evidence, high prevalence)
+  - NEVER: anti-patterns derived from minority conventions
+  - PREFERRED: conventions with moderate evidence
+- `## Category Details` followed by `### Category Name` for each category with conventions.
+- Each category includes imperative rules with examples and one code snippet.
+- Bold the rule in each bullet. Use inline code for all code references.
+- Do not include percentages or file counts. State rules as instructions.
+- If a category has no detectable conventions, omit it entirely.
+- `paths` field: comma-separated glob patterns from detected languages (e.g., `"*.py, *.pyi"` for Python, `"*.ts, *.tsx"` for TypeScript).
 
 ---
 
 ### Phase 5: Summary
 
-After all files are written, print a summary based on which mode was used.
+After the file is written, print a summary based on which mode was used.
 
 **If hybrid mode:**
 
 ```
 /skillgen complete! (hybrid mode: CLI stats + Claude semantics)
 
-Generated N skill files in .claude/skills/:
-  naming-conventions.md      (XX lines)
-  error-handling.md          (XX lines)
-  ...
-
-Skipped: [list categories skipped — "no patterns" or "hand-written file"]
+Generated: .claude/skills/project-conventions/SKILL.md (XX lines)
+  Categories: naming, error handling, testing, imports, documentation, architecture, code style, logging
+  ALWAYS rules: N | NEVER rules: N | PREFERRED rules: N
+  Skipped: [list categories skipped — "no patterns detected"]
 
 Powered by skillgen CLI (statistical analysis across NN files) + Claude (semantic enrichment from N files).
 To share with your team: git add .claude/skills/ && git commit -m "Add AI skill files"
@@ -430,19 +483,16 @@ To share with your team: git add .claude/skills/ && git commit -m "Add AI skill 
 ```
 /skillgen complete! (standalone mode)
 
-Generated N skill files in .claude/skills/:
-  naming-conventions.md      (XX lines)
-  ...
-
-Skipped: [list categories skipped]
+Generated: .claude/skills/project-conventions/SKILL.md (XX lines)
+  Categories: naming, error handling, testing, imports, ...
+  ALWAYS rules: N | NEVER rules: N | PREFERRED rules: N
+  Skipped: [list categories skipped]
 
 These conventions are now active for this and all future sessions.
 To share with your team: git add .claude/skills/ && git commit -m "Add AI skill files"
 
 Tip: pip install skillgen-ai for faster, more accurate analysis (hybrid mode).
 ```
-
-Only list files that were actually written. Adjust counts accordingly.
 
 ---
 
@@ -457,7 +507,7 @@ Refer to the supporting file at `.claude/skills/skillgen/enrich.md` for the inde
 If Full Analysis was not already run in this session:
 - Glob source files and count by language to determine primary language.
 - Read manifest files (`pyproject.toml`, `package.json`, `go.mod`, `Cargo.toml`) to detect frameworks.
-- Glob `.claude/skills/*.md` and list existing skill files (read first line of each to get the category name).
+- Check if `.claude/skills/project-conventions/SKILL.md` exists and read it to identify which categories are already covered.
 
 ### Step 2: Fetch the community skill index
 
@@ -474,7 +524,7 @@ Parse the JSON response. It contains a `skills` array. Each skill object has: `i
 For each skill in the index:
 1. **Language filter:** The skill's `language` must match the project's primary language (or be `"any"`). Skip otherwise.
 2. **Framework filter:** If the skill has a `framework` value, it must match one of the detected frameworks. If `framework` is null, it matches any project.
-3. **Coverage filter:** Collect the skill's `categories` array. If ALL of those categories already have a corresponding `.claude/skills/{category}.md` file locally, skip the skill — it is fully covered.
+3. **Coverage filter:** Collect the skill's `categories` array. If ALL of those categories already appear as `### Category Name` sections in `.claude/skills/project-conventions/SKILL.md`, skip the skill — it is fully covered.
 
 Collect all matching skills into a candidate list.
 

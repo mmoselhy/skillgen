@@ -13,7 +13,7 @@
       "name": "skillgen",
       "source": "./",
       "description": "Analyze any codebase and auto-generate AI agent skill files for Claude Code, Cursor, and other AI tools.",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "author": {
         "name": "mmoselhy"
       },
