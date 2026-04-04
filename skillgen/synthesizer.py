@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 import tomllib
 from collections import defaultdict
@@ -60,6 +61,9 @@ def synthesize(analysis: AnalysisResult) -> ProjectConventions:
                 cat_files.add(str(p.file_path))
         files_analyzed_cat = len(cat_files) if cat_files else analysis.files_analyzed
 
+        # Compute anti-patterns from minority conventions
+        anti_pats = _compute_anti_patterns(entries, category)
+
         # Extract relevant config values for this category.
         cat_config = _config_for_category(category, config_settings)
 
@@ -69,6 +73,7 @@ def synthesize(analysis: AnalysisResult) -> ProjectConventions:
             files_analyzed=files_analyzed_cat,
             raw_pattern_count=raw_count,
             config_values=cat_config,
+            anti_patterns=anti_pats,
         )
 
     elapsed = time.monotonic() - start
@@ -251,6 +256,80 @@ def _dominant_language(patterns: list[CodePattern]) -> Language | None:
         if p.language is not None:
             lang_counts[p.language] += 1
     return max(lang_counts, key=lambda lg: lang_counts[lg]) if lang_counts else None
+
+
+# ---------------------------------------------------------------------------
+# Anti-pattern computation
+# ---------------------------------------------------------------------------
+
+
+def _compute_anti_patterns(
+    entries: list[ConventionEntry],
+    category: PatternCategory,
+) -> list[str]:
+    """Compute 'DO NOT' rules from minority patterns that conflict with dominant ones.
+
+    If the dominant pattern has >80% prevalence and a minority pattern exists,
+    derive a 'Do NOT use X' rule from the minority.
+    """
+    anti_patterns: list[str] = []
+
+    # Group entries by name to find competing variants
+    by_name: dict[str, list[ConventionEntry]] = {}
+    for entry in entries:
+        by_name.setdefault(entry.name, []).append(entry)
+
+    for name, variants in by_name.items():
+        if len(variants) < 2:
+            continue
+
+        # Sort by prevalence descending
+        sorted_variants = sorted(variants, key=lambda e: e.prevalence, reverse=True)
+        dominant = sorted_variants[0]
+
+        # Only generate anti-patterns if dominant pattern is strong (>80%)
+        if dominant.prevalence < 0.8:
+            continue
+
+        # Generate DO NOT rules for minority variants
+        for minority in sorted_variants[1:]:
+            if minority.prevalence < 0.15:  # Only for minor minorities
+                anti = _derive_anti_pattern(dominant, minority, name)
+                if anti:
+                    anti_patterns.append(anti)
+
+    return anti_patterns
+
+
+def _derive_anti_pattern(
+    dominant: ConventionEntry,
+    minority: ConventionEntry,
+    name: str,
+) -> str | None:
+    """Derive a DO NOT rule from a minority pattern.
+
+    Examples:
+    - dominant="Functions use snake_case", minority="Functions use camelCase"
+      -> "Do NOT use camelCase for function names"
+    - dominant="Uses double quotes", minority="Uses single quotes"
+      -> "Do NOT use single quotes"
+    """
+    desc = minority.description.strip()
+
+    # Pattern: "X use/uses Y" -> "Do NOT use Y for X"
+    m = re.match(r"^(\w+(?:\s+\w+)*?)\s+uses?\s+(.+)$", desc, re.IGNORECASE)
+    if m:
+        subject = m.group(1).lower()
+        convention = m.group(2)
+        return f"Do NOT use {convention} for {subject}"
+
+    # Pattern: "Uses X" -> "Do NOT use X"
+    m = re.match(r"^Uses?\s+(.+)$", desc, re.IGNORECASE)
+    if m:
+        return f"Do NOT use {m.group(1)}"
+
+    # Fallback: "Do NOT: <minority description>"
+    return f"Do NOT: {desc}"
 
 
 # ---------------------------------------------------------------------------

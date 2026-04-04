@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skillgen-ai"
-version = "0.3.2"
+version = "0.4.0"
 description = "Analyze any codebase and auto-generate AI agent skill files for Claude Code, Cursor, and other AI tools"
 readme = "README.md"
 requires-python = ">=3.11"

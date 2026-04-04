@@ -297,8 +297,7 @@ class TestSkillContentQuality:
         naming_skills = [s for s in result.skills if s.name == "naming-conventions"]
         assert len(naming_skills) == 1
         content = naming_skills[0].content
-        # Should contain actual stats.
-        assert "34/39" in content
+        # Should contain imperative phrasing, not stats.
         assert "snake_case" in content
         assert "PascalCase" in content
         # Should reference evidence.
@@ -393,6 +392,50 @@ class TestSkillContentQuality:
         content = naming_skills[0].content
         assert "get_user_by_id" in content
         assert "validate_email" in content
+
+    def test_output_uses_imperative_phrasing(self) -> None:
+        """Output should use imperative rules, not statistical observations."""
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry(
+                        "function_naming",
+                        "Functions use snake_case",
+                        file_count=34,
+                        total_files=39,
+                    ),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        naming = next(s for s in result.skills if s.name == "naming-conventions")
+        content = naming.content
+        # Should NOT contain percentages or file counts
+        assert "34/39" not in content
+        assert "87%" not in content
+        # Should contain imperative phrasing
+        assert "snake_case" in content
+
+    def test_no_conflict_notes_in_output(self) -> None:
+        """Conflict notes should not appear (they introduce anti-patterns to LLM context)."""
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry(
+                        "function_naming",
+                        "Functions use snake_case",
+                    ),
+                ],
+            }
+        )
+        # Manually add a conflict
+        conventions.categories[PatternCategory.NAMING].entries[0].conflict = "13% use camelCase"
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        naming = next(s for s in result.skills if s.name == "naming-conventions")
+        assert "Note:" not in naming.content
+        assert "camelCase" not in naming.content
 
 
 class TestEndToEndGeneration:
@@ -599,5 +642,166 @@ class TestHeadingFormat:
         result = generator.generate(conventions)
         for skill in result.skills:
             lines = skill.content.split("\n")
-            h1_lines = [ln for ln in lines if ln.startswith("# ")]
+            # Only check lines outside code fences for h1 headings
+            in_fence = False
+            h1_lines = []
+            for ln in lines:
+                if ln.startswith("```"):
+                    in_fence = not in_fence
+                elif not in_fence and ln.startswith("# "):
+                    h1_lines.append(ln)
             assert len(h1_lines) == 0, f"{skill.name} has # headings: {h1_lines}"
+
+
+class TestCodeSnippets:
+    """Test that code snippets are generated for categories with sufficient data."""
+
+    def test_naming_snippet_has_code_fence(self) -> None:
+        conventions = _make_conventions(
+            {
+                PatternCategory.NAMING: [
+                    _make_entry(
+                        "function_naming",
+                        "Functions use snake_case",
+                        evidence=["get_user", "validate_input"],
+                    ),
+                    _make_entry(
+                        "class_naming",
+                        "Classes use PascalCase",
+                        evidence=["UserService", "DataProcessor"],
+                    ),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        naming = next(s for s in result.skills if s.name == "naming-conventions")
+        assert "```python" in naming.content
+        assert "get_user" in naming.content
+        assert "### Example" in naming.content
+
+    def test_error_handling_snippet_has_try_except(self) -> None:
+        conventions = _make_conventions(
+            {
+                PatternCategory.ERROR_HANDLING: [
+                    _make_entry(
+                        "exception_types",
+                        "Uses try/except with ValueError",
+                        evidence=["raise ValueError", "raise TypeError"],
+                    ),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        err = next(s for s in result.skills if s.name == "error-handling")
+        assert "```python" in err.content
+        assert "try:" in err.content
+        assert "except" in err.content
+
+    def test_testing_snippet_has_pytest(self) -> None:
+        conventions = _make_conventions(
+            {
+                PatternCategory.TESTING: [
+                    _make_entry(
+                        "test_framework",
+                        "Uses pytest framework",
+                        evidence=["import pytest"],
+                    ),
+                    _make_entry(
+                        "pytest_fixtures",
+                        "Uses pytest fixtures",
+                        evidence=["@pytest.fixture"],
+                    ),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        testing = next(s for s in result.skills if s.name == "testing")
+        assert "```python" in testing.content
+        assert "def test_" in testing.content
+        assert "@pytest.fixture" in testing.content
+
+    def test_imports_snippet_has_grouping(self) -> None:
+        conventions = _make_conventions(
+            {
+                PatternCategory.IMPORTS: [
+                    _make_entry(
+                        "import_style",
+                        "Uses absolute imports",
+                        evidence=["from myproject.models import User"],
+                    ),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        imports = next(s for s in result.skills if s.name == "imports-and-dependencies")
+        assert "```python" in imports.content
+        assert "import" in imports.content
+
+    def test_logging_snippet_has_logger(self) -> None:
+        conventions = _make_conventions(
+            {
+                PatternCategory.LOGGING: [
+                    _make_entry(
+                        "logging_library",
+                        "Uses stdlib logging module",
+                        evidence=["import logging"],
+                    ),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        log = next(s for s in result.skills if s.name == "logging-and-observability")
+        assert "```python" in log.content
+        assert "logging" in log.content
+        assert "logger" in log.content
+
+    def test_documentation_snippet_has_docstring(self) -> None:
+        conventions = _make_conventions(
+            {
+                PatternCategory.DOCUMENTATION: [
+                    _make_entry(
+                        "docstring_format",
+                        "Uses Google-style docstrings",
+                        evidence=["Args:", "Returns:"],
+                    ),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        doc = next(s for s in result.skills if s.name == "documentation")
+        assert "```python" in doc.content
+        assert '"""' in doc.content
+
+    def test_style_has_no_snippet(self) -> None:
+        """Style category should not have a code snippet (config-driven)."""
+        conventions = _make_conventions(
+            {
+                PatternCategory.STYLE: [
+                    _make_entry("line_length", "Max 100 chars"),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        style = next(s for s in result.skills if s.name == "code-style")
+        assert "### Example" not in style.content
+
+    def test_architecture_has_no_snippet(self) -> None:
+        """Architecture category should not have a snippet (has directory tree already)."""
+        conventions = _make_conventions(
+            {
+                PatternCategory.ARCHITECTURE: [
+                    _make_entry("top_level_dirs", "Standard layout"),
+                ],
+            }
+        )
+        generator = LocalGenerator()
+        result = generator.generate(conventions)
+        arch = next(s for s in result.skills if s.name == "architecture")
+        assert "### Example" not in arch.content

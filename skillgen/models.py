@@ -257,6 +257,7 @@ class CategorySummary:
     files_analyzed: int
     raw_pattern_count: int  # before dedup
     config_values: dict[str, str] = field(default_factory=dict)  # from parsed config files
+    anti_patterns: list[str] = field(default_factory=list)  # imperative "DO NOT" rules
 
     @property
     def confidence_level(self) -> Confidence:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import enum
 import os
+import re
 import time
 import warnings
 from abc import ABC, abstractmethod
@@ -252,17 +253,50 @@ def _format_evidence_inline(evidence: list[str], max_items: int = 3) -> str:
     return ", ".join(f"`{e}`" for e in items)
 
 
+def _to_imperative(description: str) -> str:
+    """Convert a descriptive observation to an imperative rule.
+
+    'Functions use snake_case' -> 'Use snake_case for all functions'
+    'Classes use PascalCase' -> 'Use PascalCase for all classes'
+    'Uses try/except with ValueError' -> 'Use try/except with ValueError'
+    'Module docstrings present' -> 'Include module docstrings'
+    """
+    desc = description.strip()
+
+    # Common transformations
+    replacements = [
+        # "Functions use snake_case" -> "Use snake_case for functions"
+        (r"^(\w+(?:\s+\w+)*?)\s+use\s+(.+)$", r"Use \2 for \1"),
+        # "Uses X" -> "Use X"
+        (r"^Uses\s+(.+)$", r"Use \1"),
+        # "X present" -> "Include X"
+        (r"^(.+?)\s+present$", r"Include \1"),
+        # "Has X" -> "Include X"
+        (r"^Has\s+(.+)$", r"Include \1"),
+        # "Prefers X" -> "Use X"
+        (r"^Prefers?\s+(.+)$", r"Use \1"),
+    ]
+
+    for pattern, replacement in replacements:
+        result = re.sub(pattern, replacement, desc, flags=re.IGNORECASE)
+        if result != desc:
+            # Ensure first letter is capitalized
+            return result[0].upper() + result[1:]
+
+    # If no pattern matched, just ensure it starts with a verb
+    # If it already starts with a verb-like word, return as-is
+    if desc[0].isupper():
+        return desc
+    return desc[0].upper() + desc[1:]
+
+
 def _render_entry(entry: ConventionEntry, bullet: str = "-") -> list[str]:
-    """Render a single ConventionEntry as markdown lines."""
+    """Render a single ConventionEntry as an imperative rule."""
     lines: list[str] = []
-    pct = _pct(entry.file_count, entry.total_files)
-    lines.append(
-        f"{bullet} **{pct} {entry.description}** ({entry.file_count}/{entry.total_files} files)"
-    )
+    imperative = _to_imperative(entry.description)
+    lines.append(f"{bullet} **{imperative}**")
     if entry.evidence:
         lines.append(f"  - Examples: {_format_evidence_inline(entry.evidence)}")
-    if entry.conflict:
-        lines.append(f"  - Note: {entry.conflict}")
     return lines
 
 
@@ -288,7 +322,7 @@ def _render_naming(summary: CategorySummary, conventions: ProjectConventions) ->
     lines: list[str] = [
         _confidence_comment(summary),
         "",
-        f"Naming conventions observed in this {langs} project.",
+        f"Follow these naming conventions for this {langs} project.",
         "",
     ]
 
@@ -322,6 +356,7 @@ def _render_naming(summary: CategorySummary, conventions: ProjectConventions) ->
         lines.extend(_render_config_values(summary.config_values))
         lines.append("")
 
+    _maybe_append_snippet(lines, summary)
     return "\n".join(lines)
 
 
@@ -331,7 +366,7 @@ def _render_error_handling(summary: CategorySummary, conventions: ProjectConvent
     lines: list[str] = [
         _confidence_comment(summary),
         "",
-        f"Error handling patterns observed in this {langs} project.",
+        f"Follow these error handling patterns for this {langs} project.",
         "",
     ]
 
@@ -344,6 +379,7 @@ def _render_error_handling(summary: CategorySummary, conventions: ProjectConvent
             lines.extend(_render_entry(entry))
         lines.append("")
 
+    _maybe_append_snippet(lines, summary)
     return "\n".join(lines)
 
 
@@ -353,7 +389,7 @@ def _render_testing(summary: CategorySummary, conventions: ProjectConventions) -
     lines: list[str] = [
         _confidence_comment(summary),
         "",
-        f"Testing conventions observed in this {langs} project.",
+        f"Follow these testing conventions for this {langs} project.",
         "",
     ]
 
@@ -388,6 +424,7 @@ def _render_testing(summary: CategorySummary, conventions: ProjectConventions) -
             lines.extend(_render_entry(entry))
         lines.append("")
 
+    _maybe_append_snippet(lines, summary)
     return "\n".join(lines)
 
 
@@ -397,7 +434,7 @@ def _render_imports(summary: CategorySummary, conventions: ProjectConventions) -
     lines: list[str] = [
         _confidence_comment(summary),
         "",
-        f"Import and dependency patterns observed in this {langs} project.",
+        f"Follow these import and dependency patterns for this {langs} project.",
         "",
     ]
 
@@ -414,6 +451,7 @@ def _render_imports(summary: CategorySummary, conventions: ProjectConventions) -
         lines.extend(_render_config_values(summary.config_values))
         lines.append("")
 
+    _maybe_append_snippet(lines, summary)
     return "\n".join(lines)
 
 
@@ -423,7 +461,7 @@ def _render_documentation(summary: CategorySummary, conventions: ProjectConventi
     lines: list[str] = [
         _confidence_comment(summary),
         "",
-        f"Documentation patterns observed in this {langs} project.",
+        f"Follow these documentation patterns for this {langs} project.",
         "",
     ]
 
@@ -435,6 +473,7 @@ def _render_documentation(summary: CategorySummary, conventions: ProjectConventi
             lines.extend(_render_entry(entry))
         lines.append("")
 
+    _maybe_append_snippet(lines, summary)
     return "\n".join(lines)
 
 
@@ -444,7 +483,7 @@ def _render_architecture(summary: CategorySummary, conventions: ProjectConventio
     lines: list[str] = [
         _confidence_comment(summary),
         "",
-        f"Architecture patterns observed in this {langs} project.",
+        f"Follow these architecture patterns for this {langs} project.",
         "",
     ]
 
@@ -481,7 +520,7 @@ def _render_style(summary: CategorySummary, conventions: ProjectConventions) -> 
     lines: list[str] = [
         _confidence_comment(summary),
         "",
-        f"Code style conventions observed in this {langs} project.",
+        f"Follow these code style conventions for this {langs} project.",
         "",
     ]
 
@@ -586,7 +625,7 @@ def _render_logging(summary: CategorySummary, conventions: ProjectConventions) -
     lines: list[str] = [
         _confidence_comment(summary),
         "",
-        f"Logging and observability patterns observed in this {langs} project.",
+        f"Follow these logging and observability patterns for this {langs} project.",
         "",
     ]
 
@@ -598,6 +637,7 @@ def _render_logging(summary: CategorySummary, conventions: ProjectConventions) -
             lines.extend(_render_entry(entry))
         lines.append("")
 
+    _maybe_append_snippet(lines, summary)
     return "\n".join(lines)
 
 
@@ -607,7 +647,7 @@ def _render_generic(summary: CategorySummary, conventions: ProjectConventions) -
     lines: list[str] = [
         _confidence_comment(summary),
         "",
-        f"{summary.category.description} Observed in this {langs} project.",
+        f"{summary.category.description} Follow these conventions for this {langs} project.",
         "",
     ]
 
@@ -620,6 +660,467 @@ def _render_generic(summary: CategorySummary, conventions: ProjectConventions) -
         lines.append("")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Code Snippet Builders
+# ---------------------------------------------------------------------------
+
+# Maps Language enum values to markdown code fence language identifiers.
+_LANG_FENCE: dict[str, str] = {
+    "python": "python",
+    "typescript": "typescript",
+    "javascript": "javascript",
+    "java": "java",
+    "go": "go",
+    "rust": "rust",
+    "cpp": "cpp",
+}
+
+
+def _fence_lang(summary: CategorySummary) -> str:
+    """Determine the code fence language from a category summary's entries."""
+    for entry in summary.entries:
+        if entry.language is not None:
+            return _LANG_FENCE.get(entry.language.value, "")
+    return ""
+
+
+def _clean_evidence(evidence: str) -> str:
+    """Strip file references from evidence strings.
+
+    'analyze_project (analyzer.py)' -> 'analyze_project'
+    'class Language (models.py)' -> 'Language'
+    """
+    # Remove trailing " (filename.ext)" pattern
+    cleaned = re.sub(r"\s*\([^)]*\.[a-z]+\)$", "", evidence)
+    # Remove leading "class " or "raise " prefixes for use in code
+    cleaned = re.sub(r"^(class|raise|import)\s+", "", cleaned)
+    return cleaned.strip()
+
+
+def _snippet_naming(summary: CategorySummary) -> list[str]:
+    """Build a naming conventions code snippet from entry evidence."""
+    by_name = _group_entries_by_name(summary.entries)
+    lang = _fence_lang(summary)
+
+    func_names: list[str] = []
+    class_names: list[str] = []
+    for entry in by_name.get("function_naming", []):
+        func_names.extend(_clean_evidence(e) for e in entry.evidence[:2])
+    for entry in by_name.get("class_naming", []):
+        class_names.extend(_clean_evidence(e) for e in entry.evidence[:2])
+
+    if not func_names and not class_names:
+        return []
+
+    lines: list[str] = ["### Example", "", f"```{lang}"]
+
+    if lang == "python":
+        if class_names:
+            cls = class_names[0].replace("class ", "")
+            lines.append(f"class {cls}:")
+            lines.append(f'    """A {cls} instance."""')
+            lines.append("")
+        if func_names:
+            fn = func_names[0]
+            lines.append(f"def {fn}(data: dict) -> None:")
+            lines.append('    """Process data."""')
+            lines.append("    ...")
+    elif lang in ("typescript", "javascript"):
+        if class_names:
+            cls = class_names[0].replace("class ", "")
+            lines.append(f"class {cls} {{")
+            lines.append("  constructor() {}")
+            lines.append("}")
+            lines.append("")
+        if func_names:
+            fn = func_names[0]
+            prefix = "function " if lang == "javascript" else "export function "
+            sig = (
+                f"{prefix}{fn}(data: Record<string, unknown>): void"
+                if lang == "typescript"
+                else f"{prefix}{fn}(data)"
+            )
+            lines.append(f"{sig} {{")
+            lines.append("  // ...")
+            lines.append("}")
+    elif lang == "go":
+        if func_names:
+            fn = func_names[0]
+            lines.append(f"func {fn}(data map[string]any) error {{")
+            lines.append("	// ...")
+            lines.append("	return nil")
+            lines.append("}")
+    elif lang == "rust":
+        if func_names:
+            fn = func_names[0]
+            lines.append(f"fn {fn}(data: &Data) -> Result<(), Error> {{")
+            lines.append("    // ...")
+            lines.append("    Ok(())")
+            lines.append("}")
+    elif lang == "java":
+        if class_names:
+            cls = class_names[0].replace("class ", "")
+            lines.append(f"public class {cls} {{")
+            if func_names:
+                fn = func_names[0]
+                lines.append(f"    public void {fn}() {{")
+                lines.append("        // ...")
+                lines.append("    }")
+            lines.append("}")
+    else:
+        # Generic fallback
+        if func_names:
+            lines.append(f"// {func_names[0]}(...)")
+        return []
+
+    lines.extend(["```", ""])
+    return lines
+
+
+def _snippet_error_handling(summary: CategorySummary) -> list[str]:
+    """Build an error handling code snippet."""
+    by_name = _group_entries_by_name(summary.entries)
+    lang = _fence_lang(summary)
+
+    # Collect exception/error type evidence
+    exc_types: list[str] = []
+    for entry in by_name.get("exception_types", []) + by_name.get("error_types", []):
+        exc_types.extend(entry.evidence[:2])
+
+    if not exc_types and not by_name:
+        return []
+
+    lines: list[str] = ["### Example", "", f"```{lang}"]
+
+    if lang == "python":
+        exc = "ValueError"
+        for e in exc_types:
+            cleaned = _clean_evidence(e)
+            for token in cleaned.split():
+                if token and token[0].isupper():
+                    exc = token.rstrip("()")
+                    break
+            break
+        lines.append("try:")
+        lines.append("    result = process(data)")
+        lines.append(f"except {exc} as exc:")
+        lines.append('    logger.error("Processing failed", exc_info=exc)')
+        lines.append("    raise")
+    elif lang in ("typescript", "javascript"):
+        lines.append("try {")
+        lines.append("  const result = await process(data);")
+        lines.append("} catch (error) {")
+        lines.append("  logger.error('Processing failed', { error });")
+        lines.append("  throw error;")
+        lines.append("}")
+    elif lang == "go":
+        lines.append("result, err := process(data)")
+        lines.append("if err != nil {")
+        lines.append('    return fmt.Errorf("processing failed: %w", err)')
+        lines.append("}")
+    elif lang == "rust":
+        lines.append("let result = process(data)")
+        lines.append('    .map_err(|e| anyhow!("processing failed: {e}"))?;')
+    elif lang == "java":
+        exc = "Exception"
+        for e in exc_types:
+            cleaned = _clean_evidence(e).replace("catch (", "").replace(")", "")
+            for token in cleaned.split():
+                if token and token[0].isupper():
+                    exc = token
+                    break
+            break
+        lines.append("try {")
+        lines.append("    var result = process(data);")
+        lines.append(f"}} catch ({exc} e) {{")
+        lines.append('    logger.error("Processing failed", e);')
+        lines.append("    throw e;")
+        lines.append("}")
+    else:
+        return []
+
+    lines.extend(["```", ""])
+    return lines
+
+
+def _snippet_testing(summary: CategorySummary) -> list[str]:
+    """Build a testing code snippet."""
+    by_name = _group_entries_by_name(summary.entries)
+    lang = _fence_lang(summary)
+
+    if not by_name:
+        return []
+
+    lines: list[str] = ["### Example", "", f"```{lang}"]
+
+    has_pytest = any("pytest" in e.description.lower() for e in summary.entries)
+    has_jest = any(
+        "jest" in e.description.lower() or "describe" in str(e.evidence) for e in summary.entries
+    )
+    has_go_test = any("testing.T" in str(e.evidence) for e in summary.entries)
+    has_rust_test = any("#[test]" in str(e.evidence) for e in summary.entries)
+
+    if lang == "python" and has_pytest:
+        has_fixtures = "pytest_fixtures" in by_name
+        if has_fixtures:
+            lines.append("@pytest.fixture")
+            lines.append("def sample_data():")
+            lines.append('    return {"key": "value"}')
+            lines.append("")
+            lines.append("")
+        lines.append(
+            "def test_process_returns_expected(sample_data):"
+            if has_fixtures
+            else "def test_process_returns_expected():"
+        )
+        lines.append(
+            "    result = process(sample_data)"
+            if has_fixtures
+            else '    result = process({"key": "value"})'
+        )
+        lines.append("    assert result is not None")
+        lines.append('    assert result["status"] == "ok"')
+    elif lang == "python":
+        lines.append("class TestProcess(unittest.TestCase):")
+        lines.append("    def test_returns_expected(self):")
+        lines.append('        result = process({"key": "value"})')
+        lines.append("        self.assertIsNotNone(result)")
+    elif lang in ("typescript", "javascript") and has_jest:
+        lines.append("describe('process', () => {")
+        lines.append("  it('returns expected result', async () => {")
+        lines.append("    const result = await process({ key: 'value' });")
+        lines.append("    expect(result).toBeDefined();")
+        lines.append("    expect(result.status).toBe('ok');")
+        lines.append("  });")
+        lines.append("});")
+    elif lang == "go" and has_go_test:
+        has_table = "table_driven_tests" in by_name
+        if has_table:
+            lines.append("func TestProcess(t *testing.T) {")
+            lines.append("	tests := []struct {")
+            lines.append("		name  string")
+            lines.append("		input string")
+            lines.append("		want  string")
+            lines.append("	}{")
+            lines.append('		{"valid input", "hello", "HELLO"},')
+            lines.append("	}")
+            lines.append("	for _, tt := range tests {")
+            lines.append("		t.Run(tt.name, func(t *testing.T) {")
+            lines.append("			got := process(tt.input)")
+            lines.append("			assert.Equal(t, tt.want, got)")
+            lines.append("		})")
+            lines.append("	}")
+            lines.append("}")
+        else:
+            lines.append("func TestProcess(t *testing.T) {")
+            lines.append('	got := process("hello")')
+            lines.append('	assert.Equal(t, "HELLO", got)')
+            lines.append("}")
+    elif lang == "rust" and has_rust_test:
+        lines.append("#[cfg(test)]")
+        lines.append("mod tests {")
+        lines.append("    use super::*;")
+        lines.append("")
+        lines.append("    #[test]")
+        lines.append("    fn test_process() {")
+        lines.append('        let result = process("hello");')
+        lines.append('        assert_eq!(result, "HELLO");')
+        lines.append("    }")
+        lines.append("}")
+    else:
+        return []
+
+    lines.extend(["```", ""])
+    return lines
+
+
+def _snippet_imports(summary: CategorySummary) -> list[str]:
+    """Build an import ordering code snippet."""
+    by_name = _group_entries_by_name(summary.entries)
+    lang = _fence_lang(summary)
+
+    if not by_name:
+        return []
+
+    lines: list[str] = ["### Example", "", f"```{lang}"]
+
+    if lang == "python":
+        lines.append("import os                          # stdlib")
+        lines.append("from pathlib import Path")
+        lines.append("")
+        lines.append("import requests                    # third-party")
+        lines.append("")
+        lines.append("from myproject.models import User  # local")
+    elif lang in ("typescript", "javascript"):
+        lines.append("// third-party")
+        lines.append("import express from 'express';")
+        lines.append("")
+        lines.append("// local")
+        lines.append("import { User } from './models';")
+        lines.append("import { validate } from '../utils';")
+    elif lang == "go":
+        lines.append("import (")
+        lines.append('	"fmt"')
+        lines.append('	"os"')
+        lines.append("")
+        lines.append('	"github.com/example/pkg"')
+        lines.append("")
+        lines.append('	"myproject/internal/models"')
+        lines.append(")")
+    else:
+        return []
+
+    lines.extend(["```", ""])
+    return lines
+
+
+def _snippet_documentation(summary: CategorySummary) -> list[str]:
+    """Build a documentation style code snippet."""
+    by_name = _group_entries_by_name(summary.entries)
+    lang = _fence_lang(summary)
+
+    if not by_name:
+        return []
+
+    # Detect docstring style from evidence
+    has_google = any(
+        "google" in str(e.evidence).lower() or "Args:" in str(e.evidence) for e in summary.entries
+    )
+    has_jsdoc = any(
+        "jsdoc" in str(e.evidence).lower() or "@param" in str(e.evidence) for e in summary.entries
+    )
+
+    lines: list[str] = ["### Example", "", f"```{lang}"]
+
+    if lang == "python":
+        lines.append('"""Module for processing data."""')
+        lines.append("")
+        lines.append("")
+        lines.append("def process(data: dict, strict: bool = False) -> str:")
+        if has_google:
+            lines.append('    """Process the input data and return a result.')
+            lines.append("")
+            lines.append("    Args:")
+            lines.append("        data: The input data to process.")
+            lines.append("        strict: Whether to use strict validation.")
+            lines.append("")
+            lines.append("    Returns:")
+            lines.append("        The processed result string.")
+            lines.append('    """')
+        else:
+            lines.append('    """Process the input data and return a result."""')
+    elif lang in ("typescript", "javascript") and has_jsdoc:
+        lines.append("/**")
+        lines.append(" * Process the input data and return a result.")
+        lines.append(" * @param data - The input data to process.")
+        lines.append(" * @param strict - Whether to use strict validation.")
+        lines.append(" * @returns The processed result string.")
+        lines.append(" */")
+        lines.append(
+            "export function process(data: Record<string, unknown>, strict = false): string {"
+            if lang == "typescript"
+            else "function process(data, strict = false) {"
+        )
+        lines.append("  // ...")
+        lines.append("}")
+    elif lang == "go":
+        lines.append("// Process processes the input data and returns a result.")
+        lines.append("// It returns an error if the data is invalid.")
+        lines.append("func Process(data map[string]any) (string, error) {")
+        lines.append("	// ...")
+        lines.append("	return result, nil")
+        lines.append("}")
+    else:
+        return []
+
+    lines.extend(["```", ""])
+    return lines
+
+
+def _snippet_logging(summary: CategorySummary) -> list[str]:
+    """Build a logging code snippet."""
+    lang = _fence_lang(summary)
+
+    # Detect logging library from entries
+    has_structlog = any("structlog" in str(e.evidence) for e in summary.entries)
+    has_stdlib = any(
+        "logging" in str(e.evidence) and "structlog" not in str(e.evidence) for e in summary.entries
+    )
+    has_zerolog = any("zerolog" in str(e.evidence) for e in summary.entries)
+    has_zap = any("zap" in str(e.evidence) for e in summary.entries)
+
+    if not summary.entries:
+        return []
+
+    lines: list[str] = ["### Example", "", f"```{lang}"]
+
+    if lang == "python" and has_structlog:
+        lines.append("import structlog")
+        lines.append("")
+        lines.append("logger = structlog.get_logger()")
+        lines.append("")
+        lines.append('logger.info("processing started", user_id=user_id, count=len(items))')
+        lines.append('logger.error("processing failed", error=str(exc), user_id=user_id)')
+    elif lang == "python" and has_stdlib:
+        lines.append("import logging")
+        lines.append("")
+        lines.append("logger = logging.getLogger(__name__)")
+        lines.append("")
+        lines.append('logger.info("Processing started for %s", user_id)')
+        lines.append('logger.error("Processing failed: %s", exc, exc_info=True)')
+    elif lang in ("typescript", "javascript"):
+        lines.append("import { logger } from './logger';")
+        lines.append("")
+        lines.append("logger.info('Processing started', { userId, count: items.length });")
+        lines.append("logger.error('Processing failed', { error: err.message, userId });")
+    elif lang == "go" and has_zerolog:
+        lines.append(
+            'log.Info().Str("user_id", userID).Int("count", len(items)).Msg("processing started")'
+        )
+        lines.append('log.Error().Err(err).Str("user_id", userID).Msg("processing failed")')
+    elif lang == "go" and has_zap:
+        lines.append(
+            'logger.Info("processing started", zap.String("user_id", userID), zap.Int("count", len(items)))'
+        )
+        lines.append(
+            'logger.Error("processing failed", zap.Error(err), zap.String("user_id", userID))'
+        )
+    elif lang == "go":
+        lines.append('log.Printf("processing started for user %s", userID)')
+        lines.append('log.Printf("processing failed: %v", err)')
+    else:
+        return []
+
+    lines.extend(["```", ""])
+    return lines
+
+
+# Snippet builder per category. Returns empty list if no snippet can be built.
+_SNIPPET_BUILDERS: dict[PatternCategory, Callable[[CategorySummary], list[str]]] = {
+    PatternCategory.NAMING: _snippet_naming,
+    PatternCategory.ERROR_HANDLING: _snippet_error_handling,
+    PatternCategory.TESTING: _snippet_testing,
+    PatternCategory.IMPORTS: _snippet_imports,
+    PatternCategory.DOCUMENTATION: _snippet_documentation,
+    PatternCategory.LOGGING: _snippet_logging,
+    # ARCHITECTURE already has directory tree code blocks
+    # STYLE is config-driven, not code-snippet driven
+}
+
+
+def _maybe_append_snippet(
+    lines: list[str],
+    summary: CategorySummary,
+) -> None:
+    """Append a code snippet to the rendered lines if one can be built."""
+    builder = _SNIPPET_BUILDERS.get(summary.category)
+    if builder is None:
+        return
+    snippet_lines = builder(summary)
+    if snippet_lines:
+        lines.extend(snippet_lines)
 
 
 # ---------------------------------------------------------------------------

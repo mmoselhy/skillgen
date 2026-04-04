@@ -336,3 +336,108 @@ class TestSynthesisTiming:
         conventions = synthesize(analysis)
 
         assert conventions.synthesis_duration_seconds >= 0.0
+
+
+class TestAntiPatterns:
+    """Test anti-pattern computation from minority conventions."""
+
+    def test_anti_pattern_generated_for_minority(self) -> None:
+        """When dominant pattern is >80%, minority should produce anti-pattern."""
+        snake_patterns = [
+            _make_pattern(
+                PatternCategory.NAMING,
+                "function_naming",
+                "Functions use snake_case",
+                file_path=f"snake_{i}.py",
+            )
+            for i in range(30)
+        ]
+        camel_patterns = [
+            _make_pattern(
+                PatternCategory.NAMING,
+                "function_naming",
+                "Functions use camelCase",
+                file_path=f"camel_{i}.py",
+            )
+            for i in range(3)
+        ]
+
+        analysis = _make_analysis(snake_patterns + camel_patterns, files_analyzed=33)
+        conventions = synthesize(analysis)
+
+        naming = conventions.categories[PatternCategory.NAMING]
+        assert len(naming.anti_patterns) >= 1
+        assert any("camelCase" in ap for ap in naming.anti_patterns)
+
+    def test_no_anti_pattern_when_close_split(self) -> None:
+        """When patterns are close (60/40), no anti-patterns should be generated."""
+        snake_patterns = [
+            _make_pattern(
+                PatternCategory.NAMING,
+                "function_naming",
+                "Functions use snake_case",
+                file_path=f"snake_{i}.py",
+            )
+            for i in range(18)
+        ]
+        camel_patterns = [
+            _make_pattern(
+                PatternCategory.NAMING,
+                "function_naming",
+                "Functions use camelCase",
+                file_path=f"camel_{i}.py",
+            )
+            for i in range(12)
+        ]
+
+        analysis = _make_analysis(snake_patterns + camel_patterns, files_analyzed=30)
+        conventions = synthesize(analysis)
+
+        naming = conventions.categories[PatternCategory.NAMING]
+        assert len(naming.anti_patterns) == 0
+
+    def test_no_anti_pattern_for_single_variant(self) -> None:
+        """Single convention with no competing variant -> no anti-patterns."""
+        patterns = [
+            _make_pattern(
+                PatternCategory.NAMING,
+                "function_naming",
+                "Functions use snake_case",
+                file_path=f"file_{i}.py",
+            )
+            for i in range(20)
+        ]
+
+        analysis = _make_analysis(patterns, files_analyzed=20)
+        conventions = synthesize(analysis)
+
+        naming = conventions.categories[PatternCategory.NAMING]
+        assert len(naming.anti_patterns) == 0
+
+    def test_anti_pattern_uses_do_not_phrasing(self) -> None:
+        """Anti-patterns should start with 'Do NOT'."""
+        snake_patterns = [
+            _make_pattern(
+                PatternCategory.NAMING,
+                "function_naming",
+                "Functions use snake_case",
+                file_path=f"snake_{i}.py",
+            )
+            for i in range(30)
+        ]
+        camel_patterns = [
+            _make_pattern(
+                PatternCategory.NAMING,
+                "function_naming",
+                "Functions use camelCase",
+                file_path=f"camel_{i}.py",
+            )
+            for i in range(2)
+        ]
+
+        analysis = _make_analysis(snake_patterns + camel_patterns, files_analyzed=32)
+        conventions = synthesize(analysis)
+
+        naming = conventions.categories[PatternCategory.NAMING]
+        for ap in naming.anti_patterns:
+            assert ap.startswith("Do NOT"), f"Anti-pattern should start with 'Do NOT': {ap}"
